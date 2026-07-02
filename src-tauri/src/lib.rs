@@ -40,16 +40,22 @@ fn is_vault_path(path: &Path) -> Result<bool, String> {
     Ok(canonical_path.starts_with(canonical_vault))
 }
 
-fn modified_ms(path: &Path) -> Result<u64, String> {
-    let modified = fs::metadata(path)
-        .map_err(|error| error.to_string())?
-        .modified()
-        .map_err(|error| error.to_string())?;
+fn timestamp_ms(time: Result<std::time::SystemTime, std::io::Error>) -> Result<u64, String> {
+    let time = time.map_err(|error| error.to_string())?;
 
-    modified
-        .duration_since(UNIX_EPOCH)
+    time.duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_millis() as u64)
         .map_err(|error| error.to_string())
+}
+
+fn modified_ms(path: &Path) -> Result<u64, String> {
+    let metadata = fs::metadata(path).map_err(|error| error.to_string())?;
+    timestamp_ms(metadata.modified())
+}
+
+fn created_ms(path: &Path) -> Result<u64, String> {
+    let metadata = fs::metadata(path).map_err(|error| error.to_string())?;
+    timestamp_ms(metadata.created().or_else(|_| metadata.modified()))
 }
 
 fn collapse_whitespace(text: &str) -> String {
@@ -120,6 +126,7 @@ fn unique_vault_path(dir: &Path) -> PathBuf {
 struct VaultDocument {
     name: String,
     path: String,
+    created_ms: u64,
     modified_ms: u64,
     preview: String,
 }
@@ -153,18 +160,24 @@ fn list_vault_documents() -> Result<Vec<VaultDocument>, String> {
                 .map(|name| name.to_string_lossy().into_owned())
                 .unwrap_or_default(),
             path: path.to_string_lossy().into_owned(),
+            created_ms: created_ms(&path)?,
             modified_ms: modified_ms(&path)?,
             preview: file_preview(&path)?,
         });
     }
 
-    documents.sort_by(|left, right| right.modified_ms.cmp(&left.modified_ms));
+    documents.sort_by(|left, right| right.created_ms.cmp(&left.created_ms));
     Ok(documents)
 }
 
 #[tauri::command]
 fn most_recent_vault_document() -> Result<Option<String>, String> {
-    Ok(list_vault_documents()?.into_iter().next().map(|document| document.path))
+    Ok(
+        list_vault_documents()?
+            .into_iter()
+            .max_by_key(|document| document.modified_ms)
+            .map(|document| document.path),
+    )
 }
 
 #[tauri::command]

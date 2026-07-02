@@ -217,7 +217,7 @@ export function DocumentPicker({
                   <div className="picker-item-meta">
                     {!confirming && (
                       <span className="picker-item-time">
-                        {relativeTime(document.modifiedMs)}
+                        {relativeTime(document.createdMs)}
                       </span>
                     )}
                     {confirming ? (
