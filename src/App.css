@@ -3,6 +3,7 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  font-family: var(--app-font);
   background: var(--editor-bg);
   color: var(--editor-fg);
 }
@@ -13,6 +14,10 @@ body,
   --editor-bg: #fff;
   --editor-font-size: 14px;
   --statusbar-fg: #666;
+  --app-font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --new-doc-flash: rgb(0 0 0 / 0.22);
+  --new-doc-flash-doc: rgb(0 0 0 / 0.16);
+  --new-doc-flash-accent: rgb(0 102 204 / 0.28);
 }
 
 [data-font-size="s"] {
@@ -31,6 +36,9 @@ body,
   --editor-fg: #e8e8e8;
   --editor-bg: #1e1e1e;
   --statusbar-fg: #999;
+  --new-doc-flash: rgb(255 255 255 / 0.16);
+  --new-doc-flash-doc: rgb(255 255 255 / 0.2);
+  --new-doc-flash-accent: rgb(120 180 255 / 0.32);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -38,6 +46,9 @@ body,
     --editor-fg: #e8e8e8;
     --editor-bg: #1e1e1e;
     --statusbar-fg: #999;
+    --new-doc-flash: rgb(255 255 255 / 0.16);
+    --new-doc-flash-doc: rgb(255 255 255 / 0.2);
+    --new-doc-flash-accent: rgb(120 180 255 / 0.32);
   }
 }
 
@@ -54,11 +65,68 @@ body,
   background: var(--editor-bg);
 }
 
-.titlebar-drag {
+.titlebar {
+  display: flex;
   flex-shrink: 0;
+  align-items: center;
   height: 28px;
+  padding-left: 72px;
+}
+
+.titlebar-drag {
+  flex: 1;
+  align-self: stretch;
+  min-width: 0;
   -webkit-app-region: drag;
   app-region: drag;
+}
+
+.titlebar-new {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  margin-right: 12px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  font: 13px/1.4 var(--app-font);
+  color: var(--statusbar-fg);
+  background: none;
+  cursor: pointer;
+  opacity: 0.55;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.titlebar-new-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.titlebar-new:hover {
+  opacity: 1;
+}
+
+.titlebar-new-pulse {
+  animation: titlebar-new-pulse 0.9s ease;
+}
+
+@keyframes titlebar-new-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    background: none;
+  }
+
+  20%,
+  45% {
+    opacity: 1;
+    background: var(--new-doc-flash-accent);
+  }
 }
 
 .editor-shell {
@@ -67,6 +135,7 @@ body,
   min-height: 0;
   justify-content: center;
   overflow: hidden;
+  position: relative;
 }
 
 .editor {
@@ -79,8 +148,7 @@ body,
   padding: 12px;
   resize: none;
   outline: none;
-  font: var(--editor-font-size) / 1.5 ui-monospace, SFMono-Regular, Menlo, Monaco,
-    Consolas, monospace;
+  font: var(--editor-font-size) / 1.5 var(--app-font);
   color: var(--editor-fg);
   background: transparent;
   white-space: pre-wrap;
@@ -104,8 +172,7 @@ body,
   justify-content: space-between;
   gap: 12px;
   padding: 4px 14px 2px;
-  font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    monospace;
+  font: 13px/1.4 var(--app-font);
   color: var(--statusbar-fg);
   background: var(--editor-bg);
   -webkit-app-region: no-drag;
@@ -127,8 +194,92 @@ body,
   white-space: nowrap;
 }
 
+.statusbar-doc {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 2px 6px;
+  border: none;
+  border-radius: 6px;
+  font: inherit;
+  color: inherit;
+  background: none;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.statusbar-doc:hover {
+  opacity: 1;
+}
+
+.statusbar-doc-pulse {
+  animation: doc-label-pulse 0.9s ease;
+}
+
+.editor-shell-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: editor-flash-overlay 0.9s ease-out;
+}
+
+@keyframes doc-label-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    background: none;
+    transform: scale(1);
+  }
+
+  20%,
+  50% {
+    opacity: 1;
+    background: var(--new-doc-flash-doc);
+    transform: scale(1.04);
+  }
+}
+
+@keyframes editor-flash-overlay {
+  0% {
+    opacity: 0;
+    background: var(--new-doc-flash);
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  45% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+.statusbar-doc-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusbar-doc-chevron {
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1;
+}
+
 .statusbar-flag {
   flex-shrink: 0;
+}
+
+.statusbar-flag-error {
+  opacity: 1;
+  color: #c44;
 }
 
 .statusbar-controls {
@@ -169,4 +320,126 @@ body,
 .statusbar-toggle-value {
   font-variant-numeric: tabular-nums;
   line-height: 1;
+}
+
+.picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 48px 24px 72px;
+  background: rgb(0 0 0 / 18%);
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.picker-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(420px, 100%);
+  max-height: min(420px, 70vh);
+  border-radius: 12px;
+  font: 13px/1.4 var(--app-font);
+  color: var(--editor-fg);
+  background: var(--editor-bg);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 18%);
+  overflow: hidden;
+}
+
+.picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgb(127 127 127 / 18%);
+}
+
+.picker-title {
+  line-height: 1;
+}
+
+.picker-finder {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
+  font: 13px/1 var(--app-font);
+  color: inherit;
+  background: none;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.picker-finder:hover {
+  opacity: 1;
+  background: rgb(127 127 127 / 10%);
+}
+
+.picker-finder-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.picker-finder-label {
+  line-height: 1;
+}
+
+.picker-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px;
+  outline: none;
+}
+
+.picker-empty {
+  padding: 24px 14px;
+  text-align: center;
+  opacity: 0.55;
+}
+
+.picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.picker-item:hover,
+.picker-item-selected {
+  opacity: 1;
+  background: rgb(127 127 127 / 10%);
+}
+
+.picker-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker-item-time {
+  flex-shrink: 0;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
 }

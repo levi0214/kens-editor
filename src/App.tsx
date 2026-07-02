@@ -2,10 +2,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { DocumentPicker } from "./DocumentPicker";
 import {
   FontSizeIcon,
   FullWidthIcon,
   NarrowWidthIcon,
+  PlusIcon,
   ThemeDarkIcon,
   ThemeLightIcon,
   ThemeSystemIcon,
@@ -40,8 +42,15 @@ import {
   THEME_LABELS,
   type ThemeMode,
 } from "./theme";
-import { fileName, windowTitle } from "./windowTitle";
+import { useAutoSave } from "./useAutoSave";
+import {
+  createVaultDocument,
+  mostRecentVaultDocument,
+} from "./vault";
+import { documentLabel, windowTitle } from "./windowTitle";
 import "./App.css";
+
+const NEW_DOC_PULSE_MS = 900;
 
 function focusEditor(editor: HTMLTextAreaElement | null): void {
   void getCurrentWindow().setFocus();
@@ -58,14 +67,17 @@ function startWindowDrag(event: React.MouseEvent<HTMLElement>): void {
 
 function App() {
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const pulseTimerRef = useRef<number | undefined>(undefined);
   const [text, setText] = useState("");
   const [path, setPath] = useState<string | null>(null);
-  const [savedText, setSavedText] = useState("");
+  const [ready, setReady] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [newDocPulse, setNewDocPulse] = useState(false);
   const [fontSize, setFontSize] = useState<FontSize>(storedFontSize);
   const [wrap, setWrap] = useState<WrapMode>(storedWrap);
   const [maxWidth, setMaxWidth] = useState<MaxWidthMode>(storedMaxWidth);
   const [theme, setTheme] = useState<ThemeMode>(storedTheme);
-  const dirty = text !== savedText;
+  const { flush, markLoaded, saveError } = useAutoSave(text, path);
 
   const cycleFontSize = useCallback(() => {
     setFontSize((current) => {
@@ -111,17 +123,89 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const title = windowTitle(path, dirty);
+    const title = windowTitle(path, text);
     document.title = title;
     void getCurrentWindow().setTitle(title);
-  }, [path, dirty]);
+  }, [path, text]);
 
-  const loadFromPath = useCallback(async (filePath: string) => {
-    const contents = await invoke<string>("read_text_file", { path: filePath });
-    setPath(filePath);
-    setText(contents);
-    setSavedText(contents);
+  useEffect(() => {
+    return () => {
+      if (pulseTimerRef.current !== undefined) {
+        window.clearTimeout(pulseTimerRef.current);
+      }
+    };
   }, []);
+
+  const pulseNewDocument = useCallback(() => {
+    setNewDocPulse(true);
+
+    if (pulseTimerRef.current !== undefined) {
+      window.clearTimeout(pulseTimerRef.current);
+    }
+
+    pulseTimerRef.current = window.setTimeout(() => {
+      setNewDocPulse(false);
+      pulseTimerRef.current = undefined;
+    }, NEW_DOC_PULSE_MS);
+  }, []);
+
+  const loadFromPath = useCallback(
+    async (filePath: string) => {
+      const contents = await invoke<string>("read_text_file", { path: filePath });
+      setPath(filePath);
+      setText(contents);
+      markLoaded(filePath, contents);
+    },
+    [markLoaded],
+  );
+
+  const switchToPath = useCallback(
+    async (filePath: string) => {
+      if (filePath === path) {
+        return;
+      }
+
+      await flush();
+      await loadFromPath(filePath);
+    },
+    [flush, loadFromPath, path],
+  );
+
+  const newDocument = useCallback(async () => {
+    if (text.length === 0) {
+      pulseNewDocument();
+      focusEditor(editorRef.current);
+      return;
+    }
+
+    await flush();
+    const filePath = await createVaultDocument();
+    setPath(filePath);
+    setText("");
+    markLoaded(filePath, "");
+    pulseNewDocument();
+    focusEditor(editorRef.current);
+  }, [flush, markLoaded, pulseNewDocument, text]);
+
+  useEffect(() => {
+    let active = true;
+
+    void (async () => {
+      const recent = await mostRecentVaultDocument();
+      const filePath = recent ?? (await createVaultDocument());
+
+      if (!active) {
+        return;
+      }
+
+      await loadFromPath(filePath);
+      setReady(true);
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [loadFromPath]);
 
   const openFile = useCallback(async () => {
     const selected = await open({ multiple: false });
@@ -129,27 +213,17 @@ function App() {
       return;
     }
 
-    await loadFromPath(selected);
-  }, [loadFromPath]);
+    await switchToPath(selected);
+  }, [switchToPath]);
 
-  const saveToPath = useCallback(async (targetPath: string) => {
-    await invoke("write_text_file", { path: targetPath, contents: text });
-    setPath(targetPath);
-    setSavedText(text);
-  }, [text]);
-
-  const saveFile = useCallback(async () => {
-    if (path === null) {
-      const selected = await save({});
-      if (selected === null) {
-        return;
-      }
-      await saveToPath(selected);
-      return;
-    }
-
-    await saveToPath(path);
-  }, [path, saveToPath]);
+  const saveToPath = useCallback(
+    async (targetPath: string) => {
+      await invoke("write_text_file", { path: targetPath, contents: text });
+      setPath(targetPath);
+      markLoaded(targetPath, text);
+    },
+    [markLoaded, text],
+  );
 
   const saveFileAs = useCallback(async () => {
     const selected = await save({ defaultPath: path ?? undefined });
@@ -170,7 +244,7 @@ function App() {
 
         const filePath = event.payload.paths[0];
         if (filePath) {
-          void loadFromPath(filePath);
+          void switchToPath(filePath);
         }
       })
       .then((stop) => {
@@ -180,7 +254,7 @@ function App() {
     return () => {
       unlisten?.();
     };
-  }, [loadFromPath]);
+  }, [switchToPath]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -189,7 +263,10 @@ function App() {
       }
 
       const key = event.key.toLowerCase();
-      if (key === "o") {
+      if (key === "n") {
+        event.preventDefault();
+        void newDocument();
+      } else if (key === "o") {
         event.preventDefault();
         void openFile();
       } else if (key === "s" && event.shiftKey) {
@@ -197,22 +274,35 @@ function App() {
         void saveFileAs();
       } else if (key === "s") {
         event.preventDefault();
-        void saveFile();
+        void flush();
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [openFile, saveFile, saveFileAs]);
+  }, [flush, newDocument, openFile, saveFileAs]);
 
   return (
     <div className="app">
-      <div
-        className="titlebar-drag"
-        data-tauri-drag-region
-        onMouseDown={startWindowDrag}
-      />
-      <div className="editor-shell">
+      <header className="titlebar">
+        <div
+          className="titlebar-drag"
+          data-tauri-drag-region
+          onMouseDown={startWindowDrag}
+        />
+        <button
+          type="button"
+          className={`titlebar-new${newDocPulse ? " titlebar-new-pulse" : ""}`}
+          title="New document"
+          aria-label="New document"
+          onClick={() => {
+            void newDocument();
+          }}
+        >
+          <PlusIcon className="titlebar-new-icon" />
+        </button>
+      </header>
+      <div className={`editor-shell${newDocPulse ? " editor-shell-pulse" : ""}`}>
         <textarea
           ref={editorRef}
           className="editor"
@@ -220,12 +310,32 @@ function App() {
           onChange={(event) => setText(event.target.value)}
           spellCheck={false}
           wrap={wrap === "wrap" ? "soft" : "off"}
+          disabled={!ready}
         />
       </div>
       <footer className="statusbar">
         <div className="statusbar-left">
-          {path && <span className="statusbar-name">{fileName(path)}</span>}
-          {dirty && <span className="statusbar-flag">Not saved</span>}
+          {path && (
+            <button
+              type="button"
+              className={`statusbar-doc${newDocPulse ? " statusbar-doc-pulse" : ""}`}
+              title="Documents"
+              aria-label="Documents. Click to browse."
+              onClick={() => setPickerOpen(true)}
+            >
+              <span className="statusbar-doc-name">
+                {documentLabel(path, text)}
+              </span>
+              <span className="statusbar-doc-chevron" aria-hidden="true">
+                ▾
+              </span>
+            </button>
+          )}
+          {saveError && (
+            <span className="statusbar-flag statusbar-flag-error">
+              Save failed
+            </span>
+          )}
         </div>
         <div className="statusbar-controls">
           <button
@@ -281,6 +391,15 @@ function App() {
           </button>
         </div>
       </footer>
+      {pickerOpen && (
+        <DocumentPicker
+          currentPath={path}
+          onClose={() => setPickerOpen(false)}
+          onSelect={(filePath) => {
+            void switchToPath(filePath);
+          }}
+        />
+      )}
     </div>
   );
 }
