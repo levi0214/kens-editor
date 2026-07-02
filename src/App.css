@@ -79,33 +79,22 @@ body,
   app-region: drag;
 }
 
-.titlebar-title {
+.titlebar .titlebar-new-wrap {
   position: absolute;
-  top: 0;
-  right: 72px;
-  left: 72px;
-  z-index: 1;
-  overflow: hidden;
-  font: 13px/28px var(--app-font);
-  font-weight: 600;
-  color: var(--statusbar-fg);
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  opacity: 0.62;
-  pointer-events: none;
+  top: 4px;
+  right: 12px;
+  z-index: 2;
   transition: opacity 0.2s ease;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
-.titlebar-title-hidden {
+.titlebar .titlebar-new-wrap-hidden {
   opacity: 0;
+  pointer-events: none;
 }
 
 .titlebar-new {
-  position: absolute;
-  top: 2px;
-  right: 12px;
-  z-index: 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -119,14 +108,8 @@ body,
   background: none;
   cursor: pointer;
   opacity: 0.55;
-  transition: opacity 0.2s ease;
   -webkit-app-region: no-drag;
   app-region: no-drag;
-}
-
-.titlebar-new-hidden {
-  opacity: 0;
-  pointer-events: none;
 }
 
 .titlebar-new-icon {
@@ -230,6 +213,55 @@ body,
   white-space: nowrap;
 }
 
+.chrome-tip-wrap {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.chrome-tip {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  z-index: 10;
+  transform: translateX(-50%);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font: 11px/1.3 var(--app-font);
+  letter-spacing: 0.02em;
+  color: var(--statusbar-fg);
+  background: var(--editor-bg);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.chrome-tip-visible {
+  opacity: 0.72;
+}
+
+.chrome-tip-left {
+  left: 0;
+  transform: none;
+}
+
+.chrome-tip-right {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+.chrome-tip-below {
+  top: calc(100% + 4px);
+  bottom: auto;
+}
+
+.statusbar-doc-wrap {
+  flex-shrink: 1;
+}
+
 .statusbar-doc {
   display: inline-flex;
   align-items: center;
@@ -248,6 +280,7 @@ body,
 
 .statusbar-doc:hover {
   opacity: 1;
+  background: rgb(127 127 127 / 10%);
 }
 
 .statusbar-doc-pulse {

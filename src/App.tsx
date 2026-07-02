@@ -60,6 +60,7 @@ import { documentLabel, windowTitle } from "./windowTitle";
 import "./App.css";
 
 const NEW_DOC_PULSE_MS = 900;
+const HINT_DELAY_MS = 250;
 
 function focusEditor(editor: HTMLTextAreaElement | null): void {
   void getCurrentWindow().setFocus();
@@ -81,6 +82,7 @@ function isTauri(): boolean {
 function App() {
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const pulseTimerRef = useRef<number | undefined>(undefined);
+  const hintTimerRef = useRef<number | undefined>(undefined);
   const menuActionsRef = useRef({
     newDocument: () => {},
     openFile: () => {},
@@ -98,19 +100,40 @@ function App() {
   const [maxWidth, setMaxWidth] = useState<MaxWidthMode>(storedMaxWidth);
   const [theme, setTheme] = useState<ThemeMode>(storedTheme);
   const [chromeHovered, setChromeHovered] = useState(false);
+  const [activeHint, setActiveHint] = useState<string | null>(null);
   const { flush, markLoaded, saveError } = useAutoSave(text, path);
   const chromeVisible = useChromeIdle(
     !pickerOpen && !saveError,
     chromeHovered,
   );
 
+  const showHint = useCallback((name: string) => {
+    if (hintTimerRef.current !== undefined) {
+      window.clearTimeout(hintTimerRef.current);
+    }
+
+    hintTimerRef.current = window.setTimeout(() => {
+      setActiveHint(name);
+      hintTimerRef.current = undefined;
+    }, HINT_DELAY_MS);
+  }, []);
+
+  const hideHint = useCallback(() => {
+    if (hintTimerRef.current !== undefined) {
+      window.clearTimeout(hintTimerRef.current);
+      hintTimerRef.current = undefined;
+    }
+    setActiveHint(null);
+  }, []);
+
   const commitFontSize = useCallback((pick: (current: FontSize) => FontSize) => {
+    hideHint();
     setFontSize((current) => {
       const next = pick(current);
       applyFontSize(next);
       return next;
     });
-  }, []);
+  }, [hideHint]);
 
   const cycleFontSize = useCallback(() => {
     commitFontSize(rotateFontSize);
@@ -125,33 +148,37 @@ function App() {
   }, [commitFontSize]);
 
   const resetFontSize = useCallback(() => {
+    hideHint();
     applyFontSize(DEFAULT_FONT_SIZE);
     setFontSize(DEFAULT_FONT_SIZE);
-  }, []);
+  }, [hideHint]);
 
   const toggleLineWrap = useCallback(() => {
+    hideHint();
     setWrap((current) => {
       const next = toggleWrap(current);
       applyWrap(next);
       return next;
     });
-  }, []);
+  }, [hideHint]);
 
   const toggleContentWidth = useCallback(() => {
+    hideHint();
     setMaxWidth((current) => {
       const next = toggleMaxWidth(current);
       applyMaxWidth(next);
       return next;
     });
-  }, []);
+  }, [hideHint]);
 
   const cycleTheme = useCallback(() => {
+    hideHint();
     setTheme((current) => {
       const next = nextTheme(current);
       void applyTheme(next);
       return next;
     });
-  }, []);
+  }, [hideHint]);
 
   const fontSizePixels = FONT_SIZE_PRESETS[fontSize];
 
@@ -175,8 +202,16 @@ function App() {
       if (pulseTimerRef.current !== undefined) {
         window.clearTimeout(pulseTimerRef.current);
       }
+      if (hintTimerRef.current !== undefined) {
+        window.clearTimeout(hintTimerRef.current);
+      }
     };
   }, []);
+
+  const openPicker = useCallback(() => {
+    hideHint();
+    setPickerOpen(true);
+  }, [hideHint]);
 
   const pulseNewDocument = useCallback(() => {
     setNewDocPulse(true);
@@ -329,13 +364,14 @@ function App() {
   }, [switchToPath]);
 
   const togglePicker = useCallback(() => {
+    hideHint();
     setPickerOpen((open) => {
       if (open) {
         focusEditor(editorRef.current);
       }
       return !open;
     });
-  }, []);
+  }, [hideHint]);
 
   useEffect(() => {
     menuActionsRef.current = {
@@ -533,22 +569,31 @@ function App() {
           data-tauri-drag-region
           onMouseDown={startWindowDrag}
         />
-        <div
-          className={`titlebar-title${chromeVisible ? "" : " titlebar-title-hidden"}`}
+        <span
+          className={`chrome-tip-wrap titlebar-new-wrap${chromeVisible ? "" : " titlebar-new-wrap-hidden"}`}
+          onMouseEnter={() => showHint("new")}
+          onMouseLeave={hideHint}
+          onFocus={() => showHint("new")}
+          onBlur={hideHint}
         >
-          {documentLabel(path, text)}
-        </div>
-        <button
-          type="button"
-          className={`titlebar-new${newDocPulse ? " titlebar-new-pulse" : ""}${chromeVisible ? "" : " titlebar-new-hidden"}`}
-          title="New document"
-          aria-label="New document"
-          onClick={() => {
-            void newDocument();
-          }}
-        >
-          <PlusIcon className="titlebar-new-icon" />
-        </button>
+          <span
+            className={`chrome-tip chrome-tip-below chrome-tip-right${activeHint === "new" ? " chrome-tip-visible" : ""}`}
+            aria-hidden="true"
+          >
+            New ⌘N
+          </span>
+          <button
+            type="button"
+            className={`titlebar-new${newDocPulse ? " titlebar-new-pulse" : ""}`}
+            aria-label="New document. ⌘N."
+            onClick={() => {
+              hideHint();
+              void newDocument();
+            }}
+          >
+            <PlusIcon className="titlebar-new-icon" />
+          </button>
+        </span>
       </header>
       <div className={`editor-shell${newDocPulse ? " editor-shell-pulse" : ""}`}>
         <textarea
@@ -574,20 +619,33 @@ function App() {
       >
         <div className="statusbar-left">
           {path && (
-            <button
-              type="button"
-              className={`statusbar-doc${newDocPulse ? " statusbar-doc-pulse" : ""}`}
-              title="Documents (⌘P)"
-              aria-label="Documents. ⌘P to browse."
-              onClick={() => setPickerOpen(true)}
+            <span
+              className="chrome-tip-wrap statusbar-doc-wrap"
+              onMouseEnter={() => showHint("documents")}
+              onMouseLeave={hideHint}
+              onFocus={() => showHint("documents")}
+              onBlur={hideHint}
             >
-              <span className="statusbar-doc-name">
-                {documentLabel(path, text)}
+              <span
+                className={`chrome-tip chrome-tip-left${activeHint === "documents" ? " chrome-tip-visible" : ""}`}
+                aria-hidden="true"
+              >
+                Docs ⌘P
               </span>
-              <span className="statusbar-doc-chevron" aria-hidden="true">
-                ▾
-              </span>
-            </button>
+              <button
+                type="button"
+                className={`statusbar-doc${newDocPulse ? " statusbar-doc-pulse" : ""}`}
+                aria-label="Documents. ⌘P to browse."
+                onClick={openPicker}
+              >
+                <span className="statusbar-doc-name">
+                  {documentLabel(path, text)}
+                </span>
+                <span className="statusbar-doc-chevron" aria-hidden="true">
+                  ▾
+                </span>
+              </button>
+            </span>
           )}
           {saveError && (
             <span className="statusbar-flag statusbar-flag-error">
@@ -596,57 +654,109 @@ function App() {
           )}
         </div>
         <div className="statusbar-controls">
-          <button
-            type="button"
-            className="statusbar-toggle"
-            title={`Font size (${fontSizePixels}px). ⌘- smaller, ⌘= larger, ⌘0 default.`}
-            aria-label={`Font size, ${fontSizePixels}px. ⌘- smaller, ⌘= larger, ⌘0 default.`}
-            onClick={cycleFontSize}
+          <span
+            className="chrome-tip-wrap"
+            onMouseEnter={() => showHint("font")}
+            onMouseLeave={hideHint}
+            onFocus={() => showHint("font")}
+            onBlur={hideHint}
           >
-            <FontSizeIcon className="statusbar-toggle-icon" />
-            <span className="statusbar-toggle-value">{fontSizePixels}</span>
-          </button>
-          <button
-            type="button"
-            className="statusbar-toggle"
-            title={WRAP_LABELS[wrap]}
-            aria-label={`Line wrap, ${WRAP_LABELS[wrap]}. Click to toggle.`}
-            onClick={toggleLineWrap}
+            <span
+              className={`chrome-tip chrome-tip-right${activeHint === "font" ? " chrome-tip-visible" : ""}`}
+              aria-hidden="true"
+            >
+              Size ⌘±
+            </span>
+            <button
+              type="button"
+              className="statusbar-toggle"
+              aria-label={`Font size, ${fontSizePixels}px. ⌘- smaller, ⌘= larger, ⌘0 default.`}
+              onClick={cycleFontSize}
+            >
+              <FontSizeIcon className="statusbar-toggle-icon" />
+              <span className="statusbar-toggle-value">{fontSizePixels}</span>
+            </button>
+          </span>
+          <span
+            className="chrome-tip-wrap"
+            onMouseEnter={() => showHint("wrap")}
+            onMouseLeave={hideHint}
+            onFocus={() => showHint("wrap")}
+            onBlur={hideHint}
           >
-            {wrap === "wrap" ? (
-              <WrapOnIcon className="statusbar-toggle-icon" />
-            ) : (
-              <WrapOffIcon className="statusbar-toggle-icon" />
-            )}
-          </button>
-          <button
-            type="button"
-            className="statusbar-toggle"
-            title={MAX_WIDTH_LABELS[maxWidth]}
-            aria-label={`Content width, ${MAX_WIDTH_LABELS[maxWidth]}. Click to toggle.`}
-            onClick={toggleContentWidth}
+            <span
+              className={`chrome-tip chrome-tip-right${activeHint === "wrap" ? " chrome-tip-visible" : ""}`}
+              aria-hidden="true"
+            >
+              Wrap
+            </span>
+            <button
+              type="button"
+              className="statusbar-toggle"
+              aria-label={`Line wrap, ${WRAP_LABELS[wrap]}. Click to toggle.`}
+              onClick={toggleLineWrap}
+            >
+              {wrap === "wrap" ? (
+                <WrapOnIcon className="statusbar-toggle-icon" />
+              ) : (
+                <WrapOffIcon className="statusbar-toggle-icon" />
+              )}
+            </button>
+          </span>
+          <span
+            className="chrome-tip-wrap"
+            onMouseEnter={() => showHint("width")}
+            onMouseLeave={hideHint}
+            onFocus={() => showHint("width")}
+            onBlur={hideHint}
           >
-            {maxWidth === "full" ? (
-              <FullWidthIcon className="statusbar-toggle-icon" />
-            ) : (
-              <NarrowWidthIcon className="statusbar-toggle-icon" />
-            )}
-          </button>
-          <button
-            type="button"
-            className="statusbar-toggle"
-            title={`${THEME_LABELS[theme]}. ⌘⇧T to cycle.`}
-            aria-label={`Appearance, ${THEME_LABELS[theme]}. ⌘⇧T to cycle.`}
-            onClick={cycleTheme}
+            <span
+              className={`chrome-tip chrome-tip-right${activeHint === "width" ? " chrome-tip-visible" : ""}`}
+              aria-hidden="true"
+            >
+              Width
+            </span>
+            <button
+              type="button"
+              className="statusbar-toggle"
+              aria-label={`Content width, ${MAX_WIDTH_LABELS[maxWidth]}. Click to toggle.`}
+              onClick={toggleContentWidth}
+            >
+              {maxWidth === "full" ? (
+                <FullWidthIcon className="statusbar-toggle-icon" />
+              ) : (
+                <NarrowWidthIcon className="statusbar-toggle-icon" />
+              )}
+            </button>
+          </span>
+          <span
+            className="chrome-tip-wrap"
+            onMouseEnter={() => showHint("theme")}
+            onMouseLeave={hideHint}
+            onFocus={() => showHint("theme")}
+            onBlur={hideHint}
           >
-            {theme === "light" ? (
-              <ThemeLightIcon className="statusbar-toggle-icon" />
-            ) : theme === "dark" ? (
-              <ThemeDarkIcon className="statusbar-toggle-icon" />
-            ) : (
-              <ThemeSystemIcon className="statusbar-toggle-icon" />
-            )}
-          </button>
+            <span
+              className={`chrome-tip chrome-tip-right${activeHint === "theme" ? " chrome-tip-visible" : ""}`}
+              aria-hidden="true"
+            >
+              Theme ⇧⌘T
+            </span>
+            <button
+              type="button"
+              className="statusbar-toggle"
+              aria-label={`Appearance, ${THEME_LABELS[theme]}. ⌘⇧T to cycle.`}
+              onClick={cycleTheme}
+            >
+              {theme === "light" ? (
+                <ThemeLightIcon className="statusbar-toggle-icon" />
+              ) : theme === "dark" ? (
+                <ThemeDarkIcon className="statusbar-toggle-icon" />
+              ) : (
+                <ThemeSystemIcon className="statusbar-toggle-icon" />
+              )}
+            </button>
+          </span>
         </div>
       </footer>
       {pickerOpen && (
