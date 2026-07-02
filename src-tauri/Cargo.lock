@@ -1580,8 +1580,11 @@ dependencies = [
 
 [[package]]
 name = "kens-editor"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
+ "chrono",
+ "dirs",
+ "serde",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

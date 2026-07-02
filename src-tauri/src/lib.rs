@@ -1,11 +1,142 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
+
+const VAULT_DIR_NAME: &str = "KensEditor";
+
+fn vault_dir() -> Result<PathBuf, String> {
+    let home = dirs::home_dir().ok_or_else(|| "Could not find home directory".to_string())?;
+    Ok(home.join("Documents").join(VAULT_DIR_NAME))
+}
+
+fn ensure_vault_exists() -> Result<PathBuf, String> {
+    let dir = vault_dir()?;
+    fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
+    Ok(dir)
+}
+
+fn write_atomic(path: &Path, contents: &str) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+
+    let temp_path = path.with_extension("tmp");
+    fs::write(&temp_path, contents.as_bytes()).map_err(|error| error.to_string())?;
+    fs::rename(&temp_path, path).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+fn is_vault_text_file(path: &Path) -> bool {
+    path.is_file() && path.extension().is_some_and(|extension| extension == "txt")
+}
+
+fn modified_ms(path: &Path) -> Result<u64, String> {
+    let modified = fs::metadata(path)
+        .map_err(|error| error.to_string())?
+        .modified()
+        .map_err(|error| error.to_string())?;
+
+    modified
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as u64)
+        .map_err(|error| error.to_string())
+}
+
+fn unique_vault_path(dir: &Path) -> PathBuf {
+    let stamp = chrono::Local::now().format("%Y-%m-%d_%H%M%S");
+    let base = format!("{stamp}.txt");
+    let mut path = dir.join(&base);
+
+    if !path.exists() {
+        return path;
+    }
+
+    for index in 2.. {
+        path = dir.join(format!("{stamp}_{index}.txt"));
+        if !path.exists() {
+            return path;
+        }
+    }
+
+    dir.join(format!("{stamp}_overflow.txt"))
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct VaultDocument {
+    name: String,
+    path: String,
+    modified_ms: u64,
+}
+
 #[tauri::command]
 fn read_text_file(path: String) -> Result<String, String> {
-    std::fs::read_to_string(&path).map_err(|error| error.to_string())
+    fs::read_to_string(&path).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
 fn write_text_file(path: String, contents: String) -> Result<(), String> {
-    std::fs::write(&path, contents).map_err(|error| error.to_string())
+    write_atomic(Path::new(&path), &contents)
+}
+
+#[tauri::command]
+fn list_vault_documents() -> Result<Vec<VaultDocument>, String> {
+    let dir = ensure_vault_exists()?;
+    let mut documents = Vec::new();
+
+    for entry in fs::read_dir(&dir).map_err(|error| error.to_string())? {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let path = entry.path();
+
+        if !is_vault_text_file(&path) {
+            continue;
+        }
+
+        documents.push(VaultDocument {
+            name: path
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+            path: path.to_string_lossy().into_owned(),
+            modified_ms: modified_ms(&path)?,
+        });
+    }
+
+    documents.sort_by(|left, right| right.modified_ms.cmp(&left.modified_ms));
+    Ok(documents)
+}
+
+#[tauri::command]
+fn most_recent_vault_document() -> Result<Option<String>, String> {
+    Ok(list_vault_documents()?.into_iter().next().map(|document| document.path))
+}
+
+#[tauri::command]
+fn create_vault_document() -> Result<String, String> {
+    let dir = ensure_vault_exists()?;
+    let path = unique_vault_path(&dir);
+    write_atomic(&path, "")?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+fn reveal_vault_in_finder() -> Result<(), String> {
+    let dir = ensure_vault_exists()?;
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&dir)
+            .spawn()
+            .map_err(|error| error.to_string())?;
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = dir;
+        return Err("Reveal in Finder is only supported on macOS".to_string());
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -22,7 +153,14 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![read_text_file, write_text_file])
+        .invoke_handler(tauri::generate_handler![
+            read_text_file,
+            write_text_file,
+            list_vault_documents,
+            most_recent_vault_document,
+            create_vault_document,
+            reveal_vault_in_finder,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
