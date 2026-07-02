@@ -74,9 +74,20 @@ function startWindowDrag(event: React.MouseEvent<HTMLElement>): void {
   void getCurrentWindow().startDragging();
 }
 
+function isTauri(): boolean {
+  return "__TAURI_INTERNALS__" in window;
+}
+
 function App() {
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const pulseTimerRef = useRef<number | undefined>(undefined);
+  const menuActionsRef = useRef({
+    newDocument: () => {},
+    openFile: () => {},
+    saveFile: () => {},
+    saveFileAs: () => {},
+    togglePicker: () => {},
+  });
   const [text, setText] = useState("");
   const [path, setPath] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -86,8 +97,12 @@ function App() {
   const [wrap, setWrap] = useState<WrapMode>(storedWrap);
   const [maxWidth, setMaxWidth] = useState<MaxWidthMode>(storedMaxWidth);
   const [theme, setTheme] = useState<ThemeMode>(storedTheme);
+  const [chromeHovered, setChromeHovered] = useState(false);
   const { flush, markLoaded, saveError } = useAutoSave(text, path);
-  const statusbarVisible = useChromeIdle(!pickerOpen && !saveError);
+  const chromeVisible = useChromeIdle(
+    !pickerOpen && !saveError,
+    chromeHovered,
+  );
 
   const commitFontSize = useCallback((pick: (current: FontSize) => FontSize) => {
     setFontSize((current) => {
@@ -313,6 +328,143 @@ function App() {
     };
   }, [switchToPath]);
 
+  const togglePicker = useCallback(() => {
+    setPickerOpen((open) => {
+      if (open) {
+        focusEditor(editorRef.current);
+      }
+      return !open;
+    });
+  }, []);
+
+  useEffect(() => {
+    menuActionsRef.current = {
+      newDocument: () => {
+        void newDocument();
+      },
+      openFile: () => {
+        void openFile();
+      },
+      saveFile: () => {
+        void flush();
+      },
+      saveFileAs: () => {
+        void saveFileAs();
+      },
+      togglePicker,
+    };
+  }, [flush, newDocument, openFile, saveFileAs, togglePicker]);
+
+  useEffect(() => {
+    if (!isTauri()) {
+      return;
+    }
+
+    let mounted = true;
+
+    void (async () => {
+      const { Menu, MenuItem, PredefinedMenuItem, Submenu } = await import(
+        "@tauri-apps/api/menu"
+      );
+
+      const separator = () => PredefinedMenuItem.new({ item: "Separator" });
+
+      const appMenu = await Submenu.new({
+        text: "Ken's Editor",
+        items: [
+          await PredefinedMenuItem.new({ item: { About: null } }),
+          await separator(),
+          await PredefinedMenuItem.new({ item: "Services" }),
+          await separator(),
+          await PredefinedMenuItem.new({ item: "Hide" }),
+          await PredefinedMenuItem.new({ item: "HideOthers" }),
+          await PredefinedMenuItem.new({ item: "ShowAll" }),
+          await separator(),
+          await PredefinedMenuItem.new({ item: "Quit" }),
+        ],
+      });
+
+      const fileMenu = await Submenu.new({
+        text: "File",
+        items: [
+          await MenuItem.new({
+            id: "new-document",
+            text: "New Document",
+            accelerator: "CmdOrCtrl+N",
+            action: () => menuActionsRef.current.newDocument(),
+          }),
+          await MenuItem.new({
+            id: "documents",
+            text: "Documents",
+            accelerator: "CmdOrCtrl+P",
+            action: () => menuActionsRef.current.togglePicker(),
+          }),
+          await separator(),
+          await MenuItem.new({
+            id: "open-file",
+            text: "Open...",
+            accelerator: "CmdOrCtrl+O",
+            action: () => menuActionsRef.current.openFile(),
+          }),
+          await separator(),
+          await MenuItem.new({
+            id: "save-file",
+            text: "Save",
+            accelerator: "CmdOrCtrl+S",
+            action: () => menuActionsRef.current.saveFile(),
+          }),
+          await MenuItem.new({
+            id: "save-file-as",
+            text: "Save As...",
+            accelerator: "CmdOrCtrl+Shift+S",
+            action: () => menuActionsRef.current.saveFileAs(),
+          }),
+          await separator(),
+          await PredefinedMenuItem.new({ item: "CloseWindow" }),
+        ],
+      });
+
+      const editMenu = await Submenu.new({
+        text: "Edit",
+        items: [
+          await PredefinedMenuItem.new({ item: "Undo" }),
+          await PredefinedMenuItem.new({ item: "Redo" }),
+          await separator(),
+          await PredefinedMenuItem.new({ item: "Cut" }),
+          await PredefinedMenuItem.new({ item: "Copy" }),
+          await PredefinedMenuItem.new({ item: "Paste" }),
+          await PredefinedMenuItem.new({ item: "SelectAll" }),
+        ],
+      });
+
+      const viewMenu = await Submenu.new({
+        text: "View",
+        items: [await PredefinedMenuItem.new({ item: "Fullscreen" })],
+      });
+
+      const windowMenu = await Submenu.new({
+        text: "Window",
+        items: [
+          await PredefinedMenuItem.new({ item: "Minimize" }),
+          await PredefinedMenuItem.new({ item: "Maximize" }),
+          await separator(),
+          await PredefinedMenuItem.new({ item: "BringAllToFront" }),
+        ],
+      });
+
+      const menu = await Menu.new({
+        items: [appMenu, fileMenu, editMenu, viewMenu, windowMenu],
+      });
+      if (mounted) {
+        await menu.setAsAppMenu();
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!event.metaKey) {
@@ -320,6 +472,11 @@ function App() {
       }
 
       const key = event.key.toLowerCase();
+      const menuOwned = key === "n" || key === "o" || key === "p" || key === "s";
+      if (isTauri() && menuOwned) {
+        return;
+      }
+
       if (key === "n") {
         event.preventDefault();
         void newDocument();
@@ -328,12 +485,7 @@ function App() {
         void openFile();
       } else if (key === "p") {
         event.preventDefault();
-        setPickerOpen((open) => {
-          if (open) {
-            focusEditor(editorRef.current);
-          }
-          return !open;
-        });
+        togglePicker();
       } else if (key === "s" && event.shiftKey) {
         event.preventDefault();
         void saveFileAs();
@@ -349,24 +501,46 @@ function App() {
       } else if (key === "0") {
         event.preventDefault();
         resetFontSize();
+      } else if (key === "t" && event.shiftKey) {
+        event.preventDefault();
+        cycleTheme();
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [decreaseFontSize, flush, increaseFontSize, newDocument, openFile, resetFontSize, saveFileAs]);
+  }, [
+    decreaseFontSize,
+    flush,
+    increaseFontSize,
+    newDocument,
+    openFile,
+    resetFontSize,
+    saveFileAs,
+    togglePicker,
+    cycleTheme,
+  ]);
 
   return (
     <div className="app">
-      <header className="titlebar">
+      <header
+        className="titlebar"
+        onMouseEnter={() => setChromeHovered(true)}
+        onMouseLeave={() => setChromeHovered(false)}
+      >
         <div
           className="titlebar-drag"
           data-tauri-drag-region
           onMouseDown={startWindowDrag}
         />
+        <div
+          className={`titlebar-title${chromeVisible ? "" : " titlebar-title-hidden"}`}
+        >
+          {documentLabel(path, text)}
+        </div>
         <button
           type="button"
-          className={`titlebar-new${newDocPulse ? " titlebar-new-pulse" : ""}`}
+          className={`titlebar-new${newDocPulse ? " titlebar-new-pulse" : ""}${chromeVisible ? "" : " titlebar-new-hidden"}`}
           title="New document"
           aria-label="New document"
           onClick={() => {
@@ -393,7 +567,11 @@ function App() {
           disabled={!ready}
         />
       </div>
-      <footer className={`statusbar${statusbarVisible ? "" : " statusbar-hidden"}`}>
+      <footer
+        className={`statusbar${chromeVisible ? "" : " statusbar-hidden"}`}
+        onMouseEnter={() => setChromeHovered(true)}
+        onMouseLeave={() => setChromeHovered(false)}
+      >
         <div className="statusbar-left">
           {path && (
             <button
@@ -457,8 +635,8 @@ function App() {
           <button
             type="button"
             className="statusbar-toggle"
-            title={THEME_LABELS[theme]}
-            aria-label={`Appearance, ${THEME_LABELS[theme]}. Click to change.`}
+            title={`${THEME_LABELS[theme]}. ⌘⇧T to cycle.`}
+            aria-label={`Appearance, ${THEME_LABELS[theme]}. ⌘⇧T to cycle.`}
             onClick={cycleTheme}
           >
             {theme === "light" ? (

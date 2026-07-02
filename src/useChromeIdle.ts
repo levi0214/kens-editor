@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const CHROME_IDLE_MS = 1000;
+const CHROME_IDLE_MS = 800;
 
-export function useChromeIdle(active: boolean): boolean {
+export function useChromeIdle(active: boolean, pinned = false): boolean {
   const [visible, setVisible] = useState(true);
   const timerRef = useRef<number | undefined>(undefined);
 
@@ -13,7 +13,7 @@ export function useChromeIdle(active: boolean): boolean {
       window.clearTimeout(timerRef.current);
     }
 
-    if (!active) {
+    if (!active || pinned) {
       return;
     }
 
@@ -21,7 +21,7 @@ export function useChromeIdle(active: boolean): boolean {
       setVisible(false);
       timerRef.current = undefined;
     }, CHROME_IDLE_MS);
-  }, [active]);
+  }, [active, pinned]);
 
   useEffect(() => {
     if (!active) {
@@ -44,6 +44,17 @@ export function useChromeIdle(active: boolean): boolean {
       }
     };
   }, [active, bump]);
+
+  useEffect(() => {
+    if (pinned) {
+      setVisible(true);
+      if (timerRef.current !== undefined) {
+        window.clearTimeout(timerRef.current);
+      }
+    } else if (active) {
+      bump();
+    }
+  }, [pinned, active, bump]);
 
   return visible;
 }
