@@ -1,10 +1,13 @@
+export function fileName(path: string): string {
+  const parts = path.split(/[/\\]/);
+  return parts[parts.length - 1] || path;
+}
+
 export function windowTitle(path: string | null, dirty: boolean): string {
   const marker = dirty ? " •" : "";
 
   if (path) {
-    const parts = path.split(/[/\\]/);
-    const name = parts[parts.length - 1] || path;
-    return `${name}${marker}`;
+    return `${fileName(path)}${marker}`;
   }
 
   return `Ken's Editor${marker}`;

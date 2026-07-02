@@ -23,7 +23,7 @@ import {
   WRAP_LABELS,
   type WrapMode,
 } from "./wrap";
-import { windowTitle } from "./windowTitle";
+import { fileName, windowTitle } from "./windowTitle";
 import "./App.css";
 
 function focusEditor(editor: HTMLTextAreaElement | null): void {
@@ -200,6 +200,7 @@ function App() {
       </div>
       <footer className="statusbar">
         <div className="statusbar-left">
+          {path && <span className="statusbar-name">{fileName(path)}</span>}
           {dirty && <span className="statusbar-flag">Not saved</span>}
         </div>
         <div className="statusbar-controls">

@@ -115,8 +115,16 @@ body,
 .statusbar-left {
   display: flex;
   align-items: center;
+  gap: 12px;
   min-width: 0;
   flex: 1;
+  opacity: 0.55;
+}
+
+.statusbar-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .statusbar-flag {
@@ -150,7 +158,6 @@ body,
 .statusbar-toggle-icon {
   font-size: 11px;
   letter-spacing: -0.03em;
-  opacity: 0.85;
 }
 
 .statusbar-toggle-value {
