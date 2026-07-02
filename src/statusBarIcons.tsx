@@ -69,3 +69,34 @@ export function NarrowWidthIcon(props: IconProps) {
     </Icon>
   );
 }
+
+export function ThemeLightIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="8" cy="8" r="2" />
+      <path d="M8 3.35L8 4.55M8 12.65L8 11.45M3.35 8L4.55 8M12.65 8L11.45 8M4.71 4.71L5.49 5.49M11.29 4.71L10.51 5.49M11.29 11.29L10.51 10.51M4.71 11.29L5.49 10.51" />
+    </Icon>
+  );
+}
+
+export function ThemeDarkIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M11.5 9.5a4.5 4.5 0 0 1-5-5 4.5 4.5 0 1 0 5 5Z" />
+    </Icon>
+  );
+}
+
+export function ThemeSystemIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="8" cy="8" r="4.5" />
+      <path d="M8 3.5v9" />
+      <path
+        d="M8 3.5a4.5 4.5 0 0 1 0 9"
+        fill="currentColor"
+        stroke="none"
+      />
+    </Icon>
+  );
+}
