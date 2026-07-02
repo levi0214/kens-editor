@@ -62,6 +62,34 @@ import "./App.css";
 const NEW_DOC_PULSE_MS = 900;
 const HINT_DELAY_MS = 250;
 
+function ChromeHint({
+  name,
+  keys,
+  className = "",
+  visible,
+}: {
+  name: string;
+  keys: string[];
+  className?: string;
+  visible: boolean;
+}) {
+  return (
+    <span
+      className={`chrome-tip${className ? ` ${className}` : ""}${visible ? " chrome-tip-visible" : ""}`}
+      aria-hidden="true"
+    >
+      <span className="chrome-tip-name">{name}</span>
+      <span className="chrome-tip-keys">
+        {keys.map((key) => (
+          <span key={key} className="chrome-tip-key">
+            {key}
+          </span>
+        ))}
+      </span>
+    </span>
+  );
+}
+
 function focusEditor(editor: HTMLTextAreaElement | null): void {
   void getCurrentWindow().setFocus();
   editor?.focus();
@@ -584,12 +612,12 @@ function App() {
           onFocus={() => showHint("new")}
           onBlur={hideHint}
         >
-          <span
-            className={`chrome-tip chrome-tip-below chrome-tip-right${activeHint === "new" ? " chrome-tip-visible" : ""}`}
-            aria-hidden="true"
-          >
-            New ⌘N
-          </span>
+          <ChromeHint
+            name="New"
+            keys={["⌘", "N"]}
+            className="chrome-tip-below chrome-tip-right"
+            visible={activeHint === "new"}
+          />
           <button
             type="button"
             className={`titlebar-new${newDocPulse ? " titlebar-new-pulse" : ""}`}
@@ -634,12 +662,12 @@ function App() {
               onFocus={() => showHint("documents")}
               onBlur={hideHint}
             >
-              <span
-                className={`chrome-tip chrome-tip-left${activeHint === "documents" ? " chrome-tip-visible" : ""}`}
-                aria-hidden="true"
-              >
-                Docs ⌘P
-              </span>
+              <ChromeHint
+                name="Docs"
+                keys={["⌘", "P"]}
+                className="chrome-tip-left"
+                visible={activeHint === "documents"}
+              />
               <button
                 type="button"
                 className={`statusbar-doc${newDocPulse ? " statusbar-doc-pulse" : ""}`}
@@ -669,12 +697,12 @@ function App() {
             onFocus={() => showHint("font")}
             onBlur={hideHint}
           >
-            <span
-              className={`chrome-tip chrome-tip-right${activeHint === "font" ? " chrome-tip-visible" : ""}`}
-              aria-hidden="true"
-            >
-              Size ⌘±
-            </span>
+            <ChromeHint
+              name="Size"
+              keys={["⌘", "+", "−"]}
+              className="chrome-tip-right"
+              visible={activeHint === "font"}
+            />
             <button
               type="button"
               className="statusbar-toggle"
@@ -692,12 +720,12 @@ function App() {
             onFocus={() => showHint("wrap")}
             onBlur={hideHint}
           >
-            <span
-              className={`chrome-tip chrome-tip-right${activeHint === "wrap" ? " chrome-tip-visible" : ""}`}
-              aria-hidden="true"
-            >
-              Wrap ⇧⌘L
-            </span>
+            <ChromeHint
+              name="Wrap"
+              keys={["⇧", "⌘", "L"]}
+              className="chrome-tip-right"
+              visible={activeHint === "wrap"}
+            />
             <button
               type="button"
               className="statusbar-toggle"
@@ -718,12 +746,12 @@ function App() {
             onFocus={() => showHint("width")}
             onBlur={hideHint}
           >
-            <span
-              className={`chrome-tip chrome-tip-right${activeHint === "width" ? " chrome-tip-visible" : ""}`}
-              aria-hidden="true"
-            >
-              Width ⇧⌘M
-            </span>
+            <ChromeHint
+              name="Width"
+              keys={["⇧", "⌘", "M"]}
+              className="chrome-tip-right"
+              visible={activeHint === "width"}
+            />
             <button
               type="button"
               className="statusbar-toggle"
@@ -744,12 +772,12 @@ function App() {
             onFocus={() => showHint("theme")}
             onBlur={hideHint}
           >
-            <span
-              className={`chrome-tip chrome-tip-right${activeHint === "theme" ? " chrome-tip-visible" : ""}`}
-              aria-hidden="true"
-            >
-              Theme ⇧⌘T
-            </span>
+            <ChromeHint
+              name="Theme"
+              keys={["⇧", "⌘", "T"]}
+              className="chrome-tip-right"
+              visible={activeHint === "theme"}
+            />
             <button
               type="button"
               className="statusbar-toggle"
