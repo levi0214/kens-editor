@@ -19,8 +19,12 @@ body,
   --editor-font-size: 14px;
 }
 
-[data-font-size="l"] {
+[data-font-size="m"] {
   --editor-font-size: 18px;
+}
+
+[data-font-size="l"] {
+  --editor-font-size: 22px;
 }
 
 [data-theme="dark"] {
@@ -152,7 +156,7 @@ body,
 }
 
 .statusbar-toggle:hover {
-  opacity: 0.85;
+  opacity: 1;
 }
 
 .statusbar-toggle-icon {
