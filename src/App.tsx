@@ -537,6 +537,12 @@ function App() {
       } else if (key === "0") {
         event.preventDefault();
         resetFontSize();
+      } else if (key === "l" && event.shiftKey) {
+        event.preventDefault();
+        toggleLineWrap();
+      } else if (key === "m" && event.shiftKey) {
+        event.preventDefault();
+        toggleContentWidth();
       } else if (key === "t" && event.shiftKey) {
         event.preventDefault();
         cycleTheme();
@@ -554,6 +560,8 @@ function App() {
     resetFontSize,
     saveFileAs,
     togglePicker,
+    toggleLineWrap,
+    toggleContentWidth,
     cycleTheme,
   ]);
 
@@ -688,12 +696,12 @@ function App() {
               className={`chrome-tip chrome-tip-right${activeHint === "wrap" ? " chrome-tip-visible" : ""}`}
               aria-hidden="true"
             >
-              Wrap
+              Wrap ⇧⌘L
             </span>
             <button
               type="button"
               className="statusbar-toggle"
-              aria-label={`Line wrap, ${WRAP_LABELS[wrap]}. Click to toggle.`}
+              aria-label={`Line wrap, ${WRAP_LABELS[wrap]}. ⌘⇧L to toggle.`}
               onClick={toggleLineWrap}
             >
               {wrap === "wrap" ? (
@@ -714,12 +722,12 @@ function App() {
               className={`chrome-tip chrome-tip-right${activeHint === "width" ? " chrome-tip-visible" : ""}`}
               aria-hidden="true"
             >
-              Width
+              Width ⇧⌘M
             </span>
             <button
               type="button"
               className="statusbar-toggle"
-              aria-label={`Content width, ${MAX_WIDTH_LABELS[maxWidth]}. Click to toggle.`}
+              aria-label={`Content width, ${MAX_WIDTH_LABELS[maxWidth]}. ⌘⇧M to toggle.`}
               onClick={toggleContentWidth}
             >
               {maxWidth === "full" ? (
