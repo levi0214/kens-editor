@@ -103,8 +103,8 @@ body,
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding: 4px 12px;
-  font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+  padding: 4px 14px 2px;
+  font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     monospace;
   color: var(--statusbar-fg);
   background: var(--editor-bg);
@@ -135,15 +135,19 @@ body,
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 16px;
+  gap: 4px;
 }
 
 .statusbar-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 0;
+  justify-content: center;
+  gap: 6px;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 2px 8px;
   border: none;
+  border-radius: 6px;
   font: inherit;
   color: inherit;
   background: none;
@@ -156,10 +160,13 @@ body,
 }
 
 .statusbar-toggle-icon {
-  font-size: 11px;
-  letter-spacing: -0.03em;
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .statusbar-toggle-value {
   font-variant-numeric: tabular-nums;
+  line-height: 1;
 }

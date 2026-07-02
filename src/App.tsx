@@ -3,6 +3,13 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  FontSizeIcon,
+  FullWidthIcon,
+  NarrowWidthIcon,
+  WrapOffIcon,
+  WrapOnIcon,
+} from "./statusBarIcons";
+import {
   applyFontSize,
   FONT_SIZE_PRESETS,
   nextFontSize,
@@ -74,8 +81,6 @@ function App() {
   }, []);
 
   const fontSizePixels = FONT_SIZE_PRESETS[fontSize];
-  const wrapLabel = WRAP_LABELS[wrap];
-  const maxWidthLabel = MAX_WIDTH_LABELS[maxWidth];
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -207,29 +212,38 @@ function App() {
           <button
             type="button"
             className="statusbar-toggle"
+            title={`Font size (${fontSizePixels}px)`}
             aria-label={`Font size, ${fontSizePixels}px. Click to change.`}
             onClick={cycleFontSize}
           >
-            <span className="statusbar-toggle-icon" aria-hidden="true">
-              Aa
-            </span>
+            <FontSizeIcon className="statusbar-toggle-icon" />
             <span className="statusbar-toggle-value">{fontSizePixels}</span>
           </button>
           <button
             type="button"
             className="statusbar-toggle"
-            aria-label={`Line wrap, ${wrap === "wrap" ? "on" : "off"}. Click to toggle.`}
+            title={WRAP_LABELS[wrap]}
+            aria-label={`Line wrap, ${WRAP_LABELS[wrap]}. Click to toggle.`}
             onClick={toggleLineWrap}
           >
-            {wrapLabel}
+            {wrap === "wrap" ? (
+              <WrapOnIcon className="statusbar-toggle-icon" />
+            ) : (
+              <WrapOffIcon className="statusbar-toggle-icon" />
+            )}
           </button>
           <button
             type="button"
             className="statusbar-toggle"
-            aria-label={`Content width, ${maxWidth === "full" ? "full window" : "narrow column"}. Click to toggle.`}
+            title={MAX_WIDTH_LABELS[maxWidth]}
+            aria-label={`Content width, ${MAX_WIDTH_LABELS[maxWidth]}. Click to toggle.`}
             onClick={toggleContentWidth}
           >
-            {maxWidthLabel}
+            {maxWidth === "full" ? (
+              <FullWidthIcon className="statusbar-toggle-icon" />
+            ) : (
+              <NarrowWidthIcon className="statusbar-toggle-icon" />
+            )}
           </button>
         </div>
       </footer>
