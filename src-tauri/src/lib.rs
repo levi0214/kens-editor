@@ -1,8 +1,11 @@
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 const VAULT_DIR_NAME: &str = "KensEditor";
+const PREVIEW_MAX_CHARS: usize = 80;
+const PREVIEW_READ_BYTES: usize = 256;
 
 fn vault_dir() -> Result<PathBuf, String> {
     let home = dirs::home_dir().ok_or_else(|| "Could not find home directory".to_string())?;
@@ -42,6 +45,50 @@ fn modified_ms(path: &Path) -> Result<u64, String> {
         .map_err(|error| error.to_string())
 }
 
+fn collapse_whitespace(text: &str) -> String {
+    let mut result = String::new();
+    let mut last_was_space = false;
+
+    for ch in text.chars() {
+        if ch.is_whitespace() {
+            if !result.is_empty() && !last_was_space {
+                result.push(' ');
+                last_was_space = true;
+            }
+        } else {
+            result.push(ch);
+            last_was_space = false;
+        }
+    }
+
+    result.trim_end().to_string()
+}
+
+fn preview_from_text(text: &str) -> String {
+    let collapsed = collapse_whitespace(text);
+
+    if collapsed.is_empty() {
+        return "(empty)".to_string();
+    }
+
+    let char_count = collapsed.chars().count();
+    if char_count <= PREVIEW_MAX_CHARS {
+        return collapsed;
+    }
+
+    let truncated: String = collapsed.chars().take(PREVIEW_MAX_CHARS).collect();
+    format!("{truncated}…")
+}
+
+fn file_preview(path: &Path) -> Result<String, String> {
+    let mut file = fs::File::open(path).map_err(|error| error.to_string())?;
+    let mut buffer = vec![0u8; PREVIEW_READ_BYTES];
+    let read = file.read(&mut buffer).map_err(|error| error.to_string())?;
+    buffer.truncate(read);
+
+    Ok(preview_from_text(&String::from_utf8_lossy(&buffer)))
+}
+
 fn unique_vault_path(dir: &Path) -> PathBuf {
     let stamp = chrono::Local::now().format("%Y-%m-%d_%H%M%S");
     let base = format!("{stamp}.txt");
@@ -67,6 +114,7 @@ struct VaultDocument {
     name: String,
     path: String,
     modified_ms: u64,
+    preview: String,
 }
 
 #[tauri::command]
@@ -99,6 +147,7 @@ fn list_vault_documents() -> Result<Vec<VaultDocument>, String> {
                 .unwrap_or_default(),
             path: path.to_string_lossy().into_owned(),
             modified_ms: modified_ms(&path)?,
+            preview: file_preview(&path)?,
         });
     }
 

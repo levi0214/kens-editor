@@ -411,7 +411,7 @@ body,
 
 .picker-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   width: 100%;
@@ -432,14 +432,21 @@ body,
   background: rgb(127 127 127 / 10%);
 }
 
-.picker-item-name {
+.picker-item-preview {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.picker-item-preview-empty {
+  opacity: 0.55;
+}
+
 .picker-item-time {
   flex-shrink: 0;
+  padding-top: 1px;
   opacity: 0.55;
   font-variant-numeric: tabular-nums;
 }

@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState } from "react";
+import { previewFromText } from "./preview";
 import { FinderIcon } from "./statusBarIcons";
 import { relativeTime } from "./relativeTime";
 import { listVaultDocuments, revealVaultInFinder, type VaultDocument } from "./vault";
 
 interface DocumentPickerProps {
   currentPath: string | null;
+  currentText: string;
   onClose: () => void;
   onSelect: (path: string) => void;
 }
 
 export function DocumentPicker({
   currentPath,
+  currentText,
   onClose,
   onSelect,
 }: DocumentPickerProps) {
@@ -86,6 +89,11 @@ export function DocumentPicker({
           ) : (
             documents.map((document) => {
               const selected = document.path === currentPath;
+              const preview =
+                document.path === currentPath
+                  ? previewFromText(currentText)
+                  : document.preview;
+              const empty = preview === "(empty)";
 
               return (
                 <button
@@ -97,7 +105,11 @@ export function DocumentPicker({
                     onClose();
                   }}
                 >
-                  <span className="picker-item-name">{document.name}</span>
+                  <span
+                    className={`picker-item-preview${empty ? " picker-item-preview-empty" : ""}`}
+                  >
+                    {preview}
+                  </span>
                   <span className="picker-item-time">
                     {relativeTime(document.modifiedMs)}
                   </span>

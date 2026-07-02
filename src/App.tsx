@@ -394,6 +394,7 @@ function App() {
       {pickerOpen && (
         <DocumentPicker
           currentPath={path}
+          currentText={text}
           onClose={() => setPickerOpen(false)}
           onSelect={(filePath) => {
             void switchToPath(filePath);

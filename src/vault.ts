@@ -4,6 +4,7 @@ export interface VaultDocument {
   name: string;
   path: string;
   modifiedMs: number;
+  preview: string;
 }
 
 export async function listVaultDocuments(): Promise<VaultDocument[]> {
