@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 21 21">
+  <rect width="21" height="21" fill="#1e1e1e"/>
+  <!-- 7 equal bands: margin bar gap bar gap bar margin -->
+  <g fill="#e0e0e0">
+    <rect x="4" y="3" width="13" height="3" rx="1.5"/>
+    <rect x="4" y="9" width="13" height="3" rx="1.5"/>
+    <rect x="4" y="15" width="13" height="3" rx="1.5"/>
+  </g>
+</svg>
