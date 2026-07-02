@@ -10,6 +10,13 @@ import {
   type FontSize,
 } from "./fontSize";
 import {
+  applyMaxWidth,
+  MAX_WIDTH_LABELS,
+  storedMaxWidth,
+  toggleMaxWidth,
+  type MaxWidthMode,
+} from "./maxWidth";
+import {
   applyWrap,
   storedWrap,
   toggleWrap,
@@ -24,6 +31,14 @@ function focusEditor(editor: HTMLTextAreaElement | null): void {
   editor?.focus();
 }
 
+function startWindowDrag(event: React.MouseEvent<HTMLElement>): void {
+  if (event.button !== 0) {
+    return;
+  }
+
+  void getCurrentWindow().startDragging();
+}
+
 function App() {
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState("");
@@ -31,6 +46,7 @@ function App() {
   const [savedText, setSavedText] = useState("");
   const [fontSize, setFontSize] = useState<FontSize>(storedFontSize);
   const [wrap, setWrap] = useState<WrapMode>(storedWrap);
+  const [maxWidth, setMaxWidth] = useState<MaxWidthMode>(storedMaxWidth);
   const dirty = text !== savedText;
 
   const cycleFontSize = useCallback(() => {
@@ -49,8 +65,17 @@ function App() {
     });
   }, []);
 
+  const toggleContentWidth = useCallback(() => {
+    setMaxWidth((current) => {
+      const next = toggleMaxWidth(current);
+      applyMaxWidth(next);
+      return next;
+    });
+  }, []);
+
   const fontSizePixels = FONT_SIZE_PRESETS[fontSize];
   const wrapLabel = WRAP_LABELS[wrap];
+  const maxWidthLabel = MAX_WIDTH_LABELS[maxWidth];
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -158,14 +183,21 @@ function App() {
 
   return (
     <div className="app">
-      <textarea
-        ref={editorRef}
-        className="editor"
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        spellCheck={false}
-        wrap={wrap === "wrap" ? "soft" : "off"}
+      <div
+        className="titlebar-drag"
+        data-tauri-drag-region
+        onMouseDown={startWindowDrag}
       />
+      <div className="editor-shell">
+        <textarea
+          ref={editorRef}
+          className="editor"
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          spellCheck={false}
+          wrap={wrap === "wrap" ? "soft" : "off"}
+        />
+      </div>
       <footer className="statusbar">
         <div className="statusbar-left">
           {dirty && <span className="statusbar-flag">Not saved</span>}
@@ -189,6 +221,14 @@ function App() {
             onClick={toggleLineWrap}
           >
             {wrapLabel}
+          </button>
+          <button
+            type="button"
+            className="statusbar-toggle"
+            aria-label={`Content width, ${maxWidth === "full" ? "full window" : "narrow column"}. Click to toggle.`}
+            onClick={toggleContentWidth}
+          >
+            {maxWidthLabel}
           </button>
         </div>
       </footer>
