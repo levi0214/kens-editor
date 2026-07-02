@@ -594,7 +594,7 @@ function App() {
   ]);
 
   return (
-    <div className="app">
+    <div className={`app${newDocPulse ? " app-new-pulse" : ""}`}>
       <header
         className="titlebar"
         onMouseEnter={() => setChromeHovered(true)}
@@ -620,7 +620,7 @@ function App() {
           />
           <button
             type="button"
-            className={`titlebar-new${newDocPulse ? " titlebar-new-pulse" : ""}`}
+            className="titlebar-new"
             aria-label="New document. ⌘N."
             onClick={() => {
               hideHint();
@@ -631,7 +631,7 @@ function App() {
           </button>
         </span>
       </header>
-      <div className={`editor-shell${newDocPulse ? " editor-shell-pulse" : ""}`}>
+      <div className="editor-shell">
         <textarea
           ref={editorRef}
           className="editor"
@@ -670,7 +670,7 @@ function App() {
               />
               <button
                 type="button"
-                className={`statusbar-doc${newDocPulse ? " statusbar-doc-pulse" : ""}`}
+                className="statusbar-doc"
                 aria-label="Documents. ⌘P to browse."
                 onClick={openPicker}
               >

@@ -15,9 +15,7 @@ body,
   --editor-font-size: 18px;
   --statusbar-fg: #6b6966;
   --app-font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  --new-doc-flash: rgb(0 0 0 / 0.22);
-  --new-doc-flash-doc: rgb(0 0 0 / 0.16);
-  --new-doc-flash-accent: rgb(0 102 204 / 0.28);
+  --new-doc-flash: rgb(0 0 0 / 0.1);
 }
 
 [data-font-size="s"] {
@@ -36,9 +34,7 @@ body,
   --editor-fg: #e8e8e8;
   --editor-bg: #1e1e1e;
   --statusbar-fg: #999;
-  --new-doc-flash: rgb(255 255 255 / 0.16);
-  --new-doc-flash-doc: rgb(255 255 255 / 0.2);
-  --new-doc-flash-accent: rgb(120 180 255 / 0.32);
+  --new-doc-flash: rgb(255 255 255 / 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -46,9 +42,7 @@ body,
     --editor-fg: #e8e8e8;
     --editor-bg: #1e1e1e;
     --statusbar-fg: #999;
-    --new-doc-flash: rgb(255 255 255 / 0.16);
-    --new-doc-flash-doc: rgb(255 255 255 / 0.2);
-    --new-doc-flash-accent: rgb(120 180 255 / 0.32);
+    --new-doc-flash: rgb(255 255 255 / 0.08);
   }
 }
 
@@ -62,7 +56,36 @@ body,
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  position: relative;
   background: var(--editor-bg);
+}
+
+.app-new-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  animation: app-new-flash 0.9s ease-out;
+}
+
+@keyframes app-new-flash {
+  0% {
+    opacity: 0;
+    background: var(--new-doc-flash);
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  45% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
 }
 
 .titlebar {
@@ -121,24 +144,6 @@ body,
 .titlebar-new:hover {
   opacity: 1;
   background: rgb(127 127 127 / 10%);
-}
-
-.titlebar-new-pulse {
-  animation: titlebar-new-pulse 0.9s ease;
-}
-
-@keyframes titlebar-new-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-    background: none;
-  }
-
-  20%,
-  45% {
-    opacity: 1;
-    background: var(--new-doc-flash-accent);
-  }
 }
 
 .editor-shell {
@@ -303,53 +308,6 @@ body,
 .statusbar-doc:hover {
   opacity: 1;
   background: rgb(127 127 127 / 10%);
-}
-
-.statusbar-doc-pulse {
-  animation: doc-label-pulse 0.9s ease;
-}
-
-.editor-shell-pulse::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  animation: editor-flash-overlay 0.9s ease-out;
-}
-
-@keyframes doc-label-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-    background: none;
-    transform: scale(1);
-  }
-
-  20%,
-  50% {
-    opacity: 1;
-    background: var(--new-doc-flash-doc);
-    transform: scale(1.04);
-  }
-}
-
-@keyframes editor-flash-overlay {
-  0% {
-    opacity: 0;
-    background: var(--new-doc-flash);
-  }
-
-  18% {
-    opacity: 1;
-  }
-
-  45% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0;
-  }
 }
 
 .statusbar-doc-name {
