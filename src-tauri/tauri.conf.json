@@ -1,8 +1,9 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "kens-editor",
+  "productName": "Ken's Editor",
   "version": "0.6.0",
   "identifier": "com.kens.editor",
+  "mainBinaryName": "kens-editor",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
