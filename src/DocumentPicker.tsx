@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { KeyHints } from "./keyHint";
 import { previewFromText } from "./preview";
 import { CheckIcon, CloseIcon, FinderIcon, TrashIcon } from "./statusBarIcons";
 import { relativeTime } from "./relativeTime";
@@ -154,7 +155,9 @@ export function DocumentPicker({
       >
         <div className="picker-header">
           <span className="picker-title">Documents</span>
-          <span className="picker-hint">↑↓ · ↵ · Esc</span>
+          <span className="picker-hint">
+            <KeyHints keys={["↑", "↓", "↵"]} />
+          </span>
           <button
             type="button"
             className="picker-finder"

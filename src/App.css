@@ -412,11 +412,11 @@ body,
 }
 
 .picker-hint {
+  display: inline-flex;
+  align-items: center;
   margin-right: auto;
   padding-left: 10px;
-  opacity: 0.4;
-  font-size: 11px;
-  letter-spacing: 0.04em;
+  opacity: 0.55;
 }
 
 .picker-finder {

@@ -57,38 +57,11 @@ import {
   forgetDraft,
 } from "./sessionDrafts";
 import { documentLabel, windowTitle } from "./windowTitle";
+import { ChromeHint } from "./keyHint";
 import "./App.css";
 
 const NEW_DOC_PULSE_MS = 900;
 const HINT_DELAY_MS = 250;
-
-function ChromeHint({
-  name,
-  keys,
-  className = "",
-  visible,
-}: {
-  name: string;
-  keys: string[];
-  className?: string;
-  visible: boolean;
-}) {
-  return (
-    <span
-      className={`chrome-tip${className ? ` ${className}` : ""}${visible ? " chrome-tip-visible" : ""}`}
-      aria-hidden="true"
-    >
-      <span className="chrome-tip-name">{name}</span>
-      <span className="chrome-tip-keys">
-        {keys.map((key) => (
-          <span key={key} className="chrome-tip-key">
-            {key}
-          </span>
-        ))}
-      </span>
-    </span>
-  );
-}
 
 function focusEditor(editor: HTMLTextAreaElement | null): void {
   void getCurrentWindow().setFocus();
