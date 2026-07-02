@@ -154,7 +154,7 @@ export function DocumentPicker({
       >
         <div className="picker-header">
           <span className="picker-title">Documents</span>
-          <span className="picker-hint">↑↓ · ↵</span>
+          <span className="picker-hint">↑↓ · ↵ · Esc</span>
           <button
             type="button"
             className="picker-finder"
@@ -217,7 +217,7 @@ export function DocumentPicker({
                   <div className="picker-item-meta">
                     {!confirming && (
                       <span className="picker-item-time">
-                        {relativeTime(document.createdMs)}
+                        {relativeTime(document.modifiedMs)}
                       </span>
                     )}
                     {confirming ? (

@@ -166,7 +166,7 @@ fn list_vault_documents() -> Result<Vec<VaultDocument>, String> {
         });
     }
 
-    documents.sort_by(|left, right| right.created_ms.cmp(&left.created_ms));
+    documents.sort_by(|left, right| right.modified_ms.cmp(&left.modified_ms));
     Ok(documents)
 }
 
