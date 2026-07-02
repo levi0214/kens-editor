@@ -100,3 +100,20 @@ export function ThemeSystemIcon(props: IconProps) {
     </Icon>
   );
 }
+
+export function PlusIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M8 3.5v9" />
+      <path d="M3.5 8h9" />
+    </Icon>
+  );
+}
+
+export function FinderIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M3 5.5h3l1.5 1.5h6v5H3z" />
+    </Icon>
+  );
+}
