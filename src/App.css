@@ -361,6 +361,14 @@ body,
   line-height: 1;
 }
 
+.picker-hint {
+  margin-right: auto;
+  padding-left: 10px;
+  opacity: 0.4;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
 .picker-finder {
   display: inline-flex;
   flex-shrink: 0;
@@ -423,6 +431,15 @@ body,
 .picker-item-selected {
   opacity: 1;
   background: rgb(127 127 127 / 10%);
+}
+
+.picker-item-active {
+  opacity: 1;
+  background: rgb(127 127 127 / 16%);
+}
+
+.picker-item-active.picker-item-selected {
+  background: rgb(127 127 127 / 20%);
 }
 
 .picker-item-confirm {

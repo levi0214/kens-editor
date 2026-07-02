@@ -27,8 +27,10 @@ export function DocumentPicker({
   const [documents, setDocuments] = useState<VaultDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmDeletePath, setConfirmDeletePath] = useState<string | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const confirmDeleteRef = useRef<HTMLButtonElement>(null);
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   useEffect(() => {
     let active = true;
@@ -76,12 +78,41 @@ export function DocumentPicker({
         } else {
           onClose();
         }
+        return;
+      }
+
+      if (confirmDeletePath || documents.length === 0) {
+        return;
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setActiveIndex((index) => Math.min(index + 1, documents.length - 1));
+        return;
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setActiveIndex((index) => Math.max(index - 1, 0));
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [confirmDeletePath, onClose, performDelete]);
+  }, [confirmDeletePath, documents, onClose, performDelete]);
+
+  useEffect(() => {
+    if (loading || documents.length === 0) {
+      return;
+    }
+
+    const index = documents.findIndex((document) => document.path === currentPath);
+    setActiveIndex(index >= 0 ? index : 0);
+  }, [currentPath, documents, loading]);
+
+  useEffect(() => {
+    itemRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
 
   useEffect(() => {
     listRef.current?.focus();
@@ -93,6 +124,26 @@ export function DocumentPicker({
     }
   }, [confirmDeletePath]);
 
+  const openDocument = useCallback(
+    (filePath: string) => {
+      onSelect(filePath);
+      onClose();
+    },
+    [onClose, onSelect],
+  );
+
+  const onListKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Enter" || confirmDeletePath || documents.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    const document = documents[activeIndex];
+    if (document) {
+      openDocument(document.path);
+    }
+  };
+
   return (
     <div className="picker-backdrop" onMouseDown={onClose}>
       <div
@@ -103,6 +154,7 @@ export function DocumentPicker({
       >
         <div className="picker-header">
           <span className="picker-title">Documents</span>
+          <span className="picker-hint">↑↓ · ↵</span>
           <button
             type="button"
             className="picker-finder"
@@ -116,14 +168,20 @@ export function DocumentPicker({
             <span className="picker-finder-label">Finder</span>
           </button>
         </div>
-        <div className="picker-list" ref={listRef} tabIndex={-1}>
+        <div
+          className="picker-list"
+          ref={listRef}
+          tabIndex={-1}
+          onKeyDown={onListKeyDown}
+        >
           {loading ? (
             <div className="picker-empty">Loading…</div>
           ) : documents.length === 0 ? (
             <div className="picker-empty">No documents yet</div>
           ) : (
-            documents.map((document) => {
+            documents.map((document, index) => {
               const selected = document.path === currentPath;
+              const active = index === activeIndex;
               const confirming = document.path === confirmDeletePath;
               const preview =
                 document.path === currentPath
@@ -134,7 +192,11 @@ export function DocumentPicker({
               return (
                 <div
                   key={document.path}
-                  className={`picker-item${selected ? " picker-item-selected" : ""}${confirming ? " picker-item-confirm" : ""}`}
+                  ref={(element) => {
+                    itemRefs.current[index] = element;
+                  }}
+                  className={`picker-item${selected ? " picker-item-selected" : ""}${active ? " picker-item-active" : ""}${confirming ? " picker-item-confirm" : ""}`}
+                  onMouseEnter={() => setActiveIndex(index)}
                 >
                   <button
                     type="button"
@@ -143,8 +205,7 @@ export function DocumentPicker({
                       if (confirming) {
                         return;
                       }
-                      onSelect(document.path);
-                      onClose();
+                      openDocument(document.path);
                     }}
                   >
                     <span

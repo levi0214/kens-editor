@@ -292,6 +292,14 @@ function App() {
       } else if (key === "o") {
         event.preventDefault();
         void openFile();
+      } else if (key === "p") {
+        event.preventDefault();
+        setPickerOpen((open) => {
+          if (open) {
+            focusEditor(editorRef.current);
+          }
+          return !open;
+        });
       } else if (key === "s" && event.shiftKey) {
         event.preventDefault();
         void saveFileAs();
@@ -342,8 +350,8 @@ function App() {
             <button
               type="button"
               className={`statusbar-doc${newDocPulse ? " statusbar-doc-pulse" : ""}`}
-              title="Documents"
-              aria-label="Documents. Click to browse."
+              title="Documents (⌘P)"
+              aria-label="Documents. ⌘P to browse."
               onClick={() => setPickerOpen(true)}
             >
               <span className="statusbar-doc-name">
@@ -418,7 +426,10 @@ function App() {
         <DocumentPicker
           currentPath={path}
           currentText={text}
-          onClose={() => setPickerOpen(false)}
+          onClose={() => {
+            setPickerOpen(false);
+            focusEditor(editorRef.current);
+          }}
           onDelete={(filePath) => {
             void handleDocumentDeleted(filePath);
           }}
