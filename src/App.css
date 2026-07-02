@@ -10,10 +10,10 @@ body,
 
 :root,
 [data-theme="light"] {
-  --editor-fg: #1a1a1a;
-  --editor-bg: #fff;
+  --editor-fg: #1c1b19;
+  --editor-bg: #faf9f6;
   --editor-font-size: 18px;
-  --statusbar-fg: #666;
+  --statusbar-fg: #6b6966;
   --app-font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --new-doc-flash: rgb(0 0 0 / 0.22);
   --new-doc-flash-doc: rgb(0 0 0 / 0.16);

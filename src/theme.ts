@@ -4,7 +4,7 @@ import { getCurrentWindow, type Theme } from "@tauri-apps/api/window";
 export type ThemeMode = "light" | "dark" | "system";
 
 const STORAGE_KEY = "kens-editor-theme";
-const LIGHT_BG: [number, number, number] = [255, 255, 255];
+const LIGHT_BG: [number, number, number] = [250, 249, 246];
 const DARK_BG: [number, number, number] = [30, 30, 30];
 
 const ORDER: ThemeMode[] = ["light", "dark", "system"];
