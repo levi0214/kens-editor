@@ -4,18 +4,16 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useState } from "react";
 import "./App.css";
 
-function fileName(path: string | null): string {
-  if (!path) {
-    return "Untitled";
-  }
-
-  const parts = path.split(/[/\\]/);
-  return parts[parts.length - 1] || "Untitled";
-}
-
 function windowTitle(path: string | null, dirty: boolean): string {
   const marker = dirty ? " •" : "";
-  return `${fileName(path)}${marker} — Ken's Editor`;
+
+  if (path) {
+    const parts = path.split(/[/\\]/);
+    const name = parts[parts.length - 1] || path;
+    return `${name}${marker}`;
+  }
+
+  return `Ken's Editor${marker}`;
 }
 
 function App() {
@@ -117,14 +115,24 @@ function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [openFile, saveFile, saveFileAs]);
 
+  const showStatus = path !== null || dirty;
+
   return (
-    <textarea
-      className="editor"
-      value={text}
-      onChange={(event) => setText(event.target.value)}
-      spellCheck={false}
-      autoFocus
-    />
+    <div className="app">
+      <textarea
+        className="editor"
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        spellCheck={false}
+        autoFocus
+      />
+      {showStatus && (
+        <footer className="statusbar">
+          {path && <span className="statusbar-path">{path}</span>}
+          {dirty && <span className="statusbar-flag">Not saved</span>}
+        </footer>
+      )}
+    </div>
   );
 }
 
