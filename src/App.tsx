@@ -9,6 +9,13 @@ import {
   storedFontSize,
   type FontSize,
 } from "./fontSize";
+import {
+  applyWrap,
+  storedWrap,
+  toggleWrap,
+  WRAP_LABELS,
+  type WrapMode,
+} from "./wrap";
 import { windowTitle } from "./windowTitle";
 import "./App.css";
 
@@ -23,6 +30,7 @@ function App() {
   const [path, setPath] = useState<string | null>(null);
   const [savedText, setSavedText] = useState("");
   const [fontSize, setFontSize] = useState<FontSize>(storedFontSize);
+  const [wrap, setWrap] = useState<WrapMode>(storedWrap);
   const dirty = text !== savedText;
 
   const cycleFontSize = useCallback(() => {
@@ -33,7 +41,16 @@ function App() {
     });
   }, []);
 
+  const toggleLineWrap = useCallback(() => {
+    setWrap((current) => {
+      const next = toggleWrap(current);
+      applyWrap(next);
+      return next;
+    });
+  }, []);
+
   const fontSizePixels = FONT_SIZE_PRESETS[fontSize];
+  const wrapLabel = WRAP_LABELS[wrap];
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -147,23 +164,34 @@ function App() {
         value={text}
         onChange={(event) => setText(event.target.value)}
         spellCheck={false}
+        wrap={wrap === "wrap" ? "soft" : "off"}
       />
       <footer className="statusbar">
         <div className="statusbar-left">
           {path && <span className="statusbar-path">{path}</span>}
           {dirty && <span className="statusbar-flag">Not saved</span>}
         </div>
-        <button
-          type="button"
-          className="font-size-toggle"
-          aria-label={`Font size, ${fontSizePixels}px. Click to change.`}
-          onClick={cycleFontSize}
-        >
-          <span className="font-size-toggle-icon" aria-hidden="true">
-            Aa
-          </span>
-          <span className="font-size-toggle-value">{fontSizePixels}</span>
-        </button>
+        <div className="statusbar-controls">
+          <button
+            type="button"
+            className="statusbar-toggle"
+            aria-label={`Font size, ${fontSizePixels}px. Click to change.`}
+            onClick={cycleFontSize}
+          >
+            <span className="statusbar-toggle-icon" aria-hidden="true">
+              Aa
+            </span>
+            <span className="statusbar-toggle-value">{fontSizePixels}</span>
+          </button>
+          <button
+            type="button"
+            className="statusbar-toggle"
+            aria-label={`Line wrap, ${wrap === "wrap" ? "on" : "off"}. Click to toggle.`}
+            onClick={toggleLineWrap}
+          >
+            {wrapLabel}
+          </button>
+        </div>
       </footer>
     </div>
   );

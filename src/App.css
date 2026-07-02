@@ -74,6 +74,14 @@ body,
     Consolas, monospace;
   color: var(--editor-fg);
   background: transparent;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+[data-wrap="nowrap"] .editor {
+  white-space: pre;
+  overflow-x: auto;
+  overflow-wrap: normal;
 }
 
 .statusbar {
@@ -106,11 +114,17 @@ body,
   flex-shrink: 0;
 }
 
-.font-size-toggle {
+.statusbar-controls {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 16px;
+}
+
+.statusbar-toggle {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  flex-shrink: 0;
   padding: 0;
   border: none;
   font: inherit;
@@ -120,16 +134,16 @@ body,
   opacity: 0.55;
 }
 
-.font-size-toggle:hover {
+.statusbar-toggle:hover {
   opacity: 0.85;
 }
 
-.font-size-toggle-icon {
+.statusbar-toggle-icon {
   font-size: 11px;
   letter-spacing: -0.03em;
   opacity: 0.85;
 }
 
-.font-size-toggle-value {
+.statusbar-toggle-value {
   font-variant-numeric: tabular-nums;
 }
