@@ -12,7 +12,7 @@ body,
 [data-theme="light"] {
   --editor-fg: #1a1a1a;
   --editor-bg: #fff;
-  --editor-font-size: 14px;
+  --editor-font-size: 18px;
   --statusbar-fg: #666;
   --app-font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --new-doc-flash: rgb(0 0 0 / 0.22);

@@ -16,8 +16,11 @@ import {
 } from "./statusBarIcons";
 import {
   applyFontSize,
+  DEFAULT_FONT_SIZE,
   FONT_SIZE_PRESETS,
   nextFontSize,
+  prevFontSize,
+  rotateFontSize,
   storedFontSize,
   type FontSize,
 } from "./fontSize";
@@ -80,12 +83,29 @@ function App() {
   const [theme, setTheme] = useState<ThemeMode>(storedTheme);
   const { flush, markLoaded, saveError } = useAutoSave(text, path);
 
-  const cycleFontSize = useCallback(() => {
+  const commitFontSize = useCallback((pick: (current: FontSize) => FontSize) => {
     setFontSize((current) => {
-      const next = nextFontSize(current);
+      const next = pick(current);
       applyFontSize(next);
       return next;
     });
+  }, []);
+
+  const cycleFontSize = useCallback(() => {
+    commitFontSize(rotateFontSize);
+  }, [commitFontSize]);
+
+  const increaseFontSize = useCallback(() => {
+    commitFontSize(nextFontSize);
+  }, [commitFontSize]);
+
+  const decreaseFontSize = useCallback(() => {
+    commitFontSize(prevFontSize);
+  }, [commitFontSize]);
+
+  const resetFontSize = useCallback(() => {
+    applyFontSize(DEFAULT_FONT_SIZE);
+    setFontSize(DEFAULT_FONT_SIZE);
   }, []);
 
   const toggleLineWrap = useCallback(() => {
@@ -306,12 +326,21 @@ function App() {
       } else if (key === "s") {
         event.preventDefault();
         void flush();
+      } else if (key === "-" || key === "_") {
+        event.preventDefault();
+        decreaseFontSize();
+      } else if (key === "=" || key === "+") {
+        event.preventDefault();
+        increaseFontSize();
+      } else if (key === "0") {
+        event.preventDefault();
+        resetFontSize();
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [flush, newDocument, openFile, saveFileAs]);
+  }, [decreaseFontSize, flush, increaseFontSize, newDocument, openFile, resetFontSize, saveFileAs]);
 
   return (
     <div className="app">
@@ -372,8 +401,8 @@ function App() {
           <button
             type="button"
             className="statusbar-toggle"
-            title={`Font size (${fontSizePixels}px)`}
-            aria-label={`Font size, ${fontSizePixels}px. Click to change.`}
+            title={`Font size (${fontSizePixels}px). ⌘- smaller, ⌘= larger, ⌘0 default.`}
+            aria-label={`Font size, ${fontSizePixels}px. ⌘- smaller, ⌘= larger, ⌘0 default.`}
             onClick={cycleFontSize}
           >
             <FontSizeIcon className="statusbar-toggle-icon" />
