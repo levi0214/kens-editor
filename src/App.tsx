@@ -58,6 +58,8 @@ import {
 } from "./sessionDrafts";
 import { documentLabel, windowTitle } from "./windowTitle";
 import { ChromeHint } from "./keyHint";
+import { completeOnboarding, initialOnboardingStatus, resolveOnboardingStatus } from "./onboarding";
+import { WelcomeScreen } from "./WelcomeScreen";
 import "./App.css";
 
 const NEW_DOC_PULSE_MS = 900;
@@ -94,6 +96,9 @@ function App() {
   const [text, setText] = useState("");
   const [path, setPath] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [onboardingStatus, setOnboardingStatus] = useState(initialOnboardingStatus);
+  const showWelcome = onboardingStatus === "welcome";
+  const onboardingComplete = onboardingStatus === "complete";
   const [pickerOpen, setPickerOpen] = useState(false);
   const [newDocPulse, setNewDocPulse] = useState(false);
   const [fontSize, setFontSize] = useState<FontSize>(storedFontSize);
@@ -104,7 +109,7 @@ function App() {
   const [activeHint, setActiveHint] = useState<string | null>(null);
   const { flush, markLoaded, saveError } = useAutoSave(text, path);
   const chromeVisible = useChromeIdle(
-    !pickerOpen && !saveError,
+    !pickerOpen && !saveError && !showWelcome,
     chromeHovered,
   );
 
@@ -184,6 +189,30 @@ function App() {
   const fontSizePixels = FONT_SIZE_PRESETS[fontSize];
 
   useEffect(() => {
+    if (onboardingStatus !== "pending") {
+      return;
+    }
+
+    let active = true;
+
+    void resolveOnboardingStatus().then((status) => {
+      if (active) {
+        setOnboardingStatus(status);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [onboardingStatus]);
+
+  useEffect(() => {
+    if (ready && onboardingComplete) {
+      focusEditor(editorRef.current);
+    }
+  }, [ready, onboardingComplete]);
+
+  useEffect(() => {
     const editor = editorRef.current;
     const onReady = () => focusEditor(editor);
 
@@ -251,6 +280,10 @@ function App() {
   );
 
   const newDocument = useCallback(async () => {
+    if (!onboardingComplete) {
+      return;
+    }
+
     if (text.length === 0) {
       pulseNewDocument();
       focusEditor(editorRef.current);
@@ -265,9 +298,13 @@ function App() {
     markLoaded(filePath, "");
     pulseNewDocument();
     focusEditor(editorRef.current);
-  }, [flush, markLoaded, path, pulseNewDocument, text]);
+  }, [flush, markLoaded, onboardingComplete, path, pulseNewDocument, text]);
 
   useEffect(() => {
+    if (!onboardingComplete) {
+      return;
+    }
+
     let active = true;
 
     void (async () => {
@@ -289,7 +326,12 @@ function App() {
     return () => {
       active = false;
     };
-  }, [loadFromPath]);
+  }, [loadFromPath, onboardingComplete]);
+
+  const handleStart = useCallback(() => {
+    completeOnboarding();
+    setOnboardingStatus("complete");
+  }, []);
 
   const openFile = useCallback(async () => {
     const selected = await open({ multiple: false });
@@ -504,6 +546,10 @@ function App() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (showWelcome) {
+        return;
+      }
+
       if (!event.metaKey) {
         return;
       }
@@ -564,6 +610,7 @@ function App() {
     toggleLineWrap,
     toggleContentWidth,
     cycleTheme,
+    showWelcome,
   ]);
 
   return (
@@ -578,54 +625,61 @@ function App() {
           data-tauri-drag-region
           onMouseDown={startWindowDrag}
         />
-        <span
-          className={`chrome-tip-wrap titlebar-new-wrap${chromeVisible ? "" : " titlebar-new-wrap-hidden"}`}
-          onMouseEnter={() => showHint("new")}
-          onMouseLeave={hideHint}
-          onFocus={() => showHint("new")}
-          onBlur={hideHint}
-        >
-          <ChromeHint
-            name="New"
-            keys={["⌘", "N"]}
-            className="chrome-tip-below chrome-tip-right"
-            visible={activeHint === "new"}
-          />
-          <button
-            type="button"
-            className="titlebar-new"
-            aria-label="New document. ⌘N."
-            onClick={() => {
-              hideHint();
-              void newDocument();
-            }}
+        {!showWelcome && (
+          <span
+            className={`chrome-tip-wrap titlebar-new-wrap${chromeVisible ? "" : " titlebar-new-wrap-hidden"}`}
+            onMouseEnter={() => showHint("new")}
+            onMouseLeave={hideHint}
+            onFocus={() => showHint("new")}
+            onBlur={hideHint}
           >
-            <PlusIcon className="titlebar-new-icon" />
-          </button>
-        </span>
+            <ChromeHint
+              name="New"
+              keys={["⌘", "N"]}
+              className="chrome-tip-below chrome-tip-right"
+              visible={activeHint === "new"}
+            />
+            <button
+              type="button"
+              className="titlebar-new"
+              aria-label="New document. ⌘N."
+              onClick={() => {
+                hideHint();
+                void newDocument();
+              }}
+            >
+              <PlusIcon className="titlebar-new-icon" />
+            </button>
+          </span>
+        )}
       </header>
       <div className="editor-shell">
-        <textarea
-          ref={editorRef}
-          className="editor"
-          value={text}
-          onChange={(event) => {
-            const next = event.target.value;
-            setText(next);
-            if (next.length > 0 && path) {
-              forgetDraft(path);
-            }
-          }}
-          spellCheck={false}
-          wrap={wrap === "wrap" ? "soft" : "off"}
-          disabled={!ready}
-        />
+        {showWelcome ? (
+          <WelcomeScreen onStart={handleStart} />
+        ) : (
+          <textarea
+            ref={editorRef}
+            className="editor"
+            value={text}
+            onChange={(event) => {
+              const next = event.target.value;
+              setText(next);
+              if (next.length > 0 && path) {
+                forgetDraft(path);
+              }
+            }}
+            spellCheck={false}
+            wrap={wrap === "wrap" ? "soft" : "off"}
+            disabled={!ready}
+          />
+        )}
       </div>
-      <footer
-        className={`statusbar${chromeVisible ? "" : " statusbar-hidden"}`}
-        onMouseEnter={() => setChromeHovered(true)}
-        onMouseLeave={() => setChromeHovered(false)}
-      >
+      {!showWelcome && (
+        <footer
+          className={`statusbar${chromeVisible ? "" : " statusbar-hidden"}`}
+          onMouseEnter={() => setChromeHovered(true)}
+          onMouseLeave={() => setChromeHovered(false)}
+        >
         <div className="statusbar-left">
           {path && (
             <span
@@ -767,8 +821,9 @@ function App() {
             </button>
           </span>
         </div>
-      </footer>
-      {pickerOpen && (
+        </footer>
+      )}
+      {pickerOpen && onboardingComplete && (
         <DocumentPicker
           currentPath={path}
           currentText={text}
