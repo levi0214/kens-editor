@@ -386,7 +386,7 @@ body,
   justify-content: center;
   width: 100%;
   min-height: 0;
-  padding: 24px 32px 14vh;
+  padding: 48px 32px 11vh;
   text-align: center;
 }
 
@@ -394,7 +394,7 @@ body,
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-bottom: 44px;
+  margin-bottom: 52px;
 }
 
 .welcome-title {
@@ -406,32 +406,38 @@ body,
 
 .welcome-lead {
   margin: 0;
-  font: 15px/1.5 var(--app-font);
+  font: 400 15px/1.55 system-ui, -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
   color: var(--statusbar-fg);
-  opacity: 0.72;
+  opacity: 0.62;
 }
 
 .welcome-start {
-  margin: 0 0 18px;
+  margin: 0 0 14px;
   padding: 11px 28px;
   border: none;
   border-radius: 8px;
-  font: 16px/1.4 var(--app-font);
+  font: 500 16px/1.4 system-ui, -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
   color: var(--editor-fg);
-  background: rgb(127 127 127 / 12%);
+  background: rgb(127 127 127 / 18%);
   cursor: pointer;
   outline: none;
+  transition: background 0.15s ease, transform 0.1s ease;
 }
 
 .welcome-start:hover {
-  background: rgb(127 127 127 / 18%);
+  background: rgb(127 127 127 / 26%);
+}
+
+.welcome-start:active {
+  background: rgb(127 127 127 / 32%);
+  transform: scale(0.98);
 }
 
 .welcome-details {
   max-width: 26rem;
-  font: 13px/1.65 var(--app-font);
+  font: 13px/1.55 system-ui, -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
   color: var(--statusbar-fg);
-  opacity: 0.62;
+  opacity: 0.78;
 }
 
 .welcome-details p {
@@ -439,7 +445,7 @@ body,
 }
 
 .welcome-details p + p {
-  margin-top: 8px;
+  margin-top: 3px;
 }
 
 .picker-backdrop {
