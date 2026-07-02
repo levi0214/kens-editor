@@ -10,8 +10,18 @@ fn write_text_file(path: String, contents: String) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    use tauri::Manager;
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            #[cfg(target_os = "macos")]
+            if let Some(window) = app.get_webview_window("main") {
+                use tauri::TitleBarStyle;
+                let _ = window.set_title_bar_style(TitleBarStyle::Overlay);
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![read_text_file, write_text_file])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -14,7 +14,9 @@
       {
         "title": "Ken's Editor",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "titleBarStyle": "Overlay",
+        "acceptFirstMouse": true
       }
     ],
     "security": {

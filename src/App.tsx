@@ -1,29 +1,35 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { windowTitle } from "./windowTitle";
 import "./App.css";
 
-function windowTitle(path: string | null, dirty: boolean): string {
-  const marker = dirty ? " •" : "";
-
-  if (path) {
-    const parts = path.split(/[/\\]/);
-    const name = parts[parts.length - 1] || path;
-    return `${name}${marker}`;
-  }
-
-  return `Ken's Editor${marker}`;
+function focusEditor(editor: HTMLTextAreaElement | null): void {
+  void getCurrentWindow().setFocus();
+  editor?.focus();
 }
 
 function App() {
+  const editorRef = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState("");
   const [path, setPath] = useState<string | null>(null);
   const [savedText, setSavedText] = useState("");
   const dirty = text !== savedText;
 
   useEffect(() => {
-    void getCurrentWindow().setTitle(windowTitle(path, dirty));
+    const editor = editorRef.current;
+    const onReady = () => focusEditor(editor);
+
+    onReady();
+    window.addEventListener("kens-editor-ready", onReady);
+    return () => window.removeEventListener("kens-editor-ready", onReady);
+  }, []);
+
+  useEffect(() => {
+    const title = windowTitle(path, dirty);
+    document.title = title;
+    void getCurrentWindow().setTitle(title);
   }, [path, dirty]);
 
   const loadFromPath = useCallback(async (filePath: string) => {
@@ -120,11 +126,11 @@ function App() {
   return (
     <div className="app">
       <textarea
+        ref={editorRef}
         className="editor"
         value={text}
         onChange={(event) => setText(event.target.value)}
         spellCheck={false}
-        autoFocus
       />
       {showStatus && (
         <footer className="statusbar">
