@@ -2,6 +2,8 @@ export type WrapMode = "wrap" | "nowrap";
 
 const STORAGE_KEY = "kens-editor-wrap";
 
+export const DEFAULT_WRAP: WrapMode = "wrap";
+
 export const WRAP_LABELS: Record<WrapMode, string> = {
   wrap: "Wrap",
   nowrap: "No wrap",
@@ -12,7 +14,7 @@ export function storedWrap(): WrapMode {
   if (value === "wrap" || value === "nowrap") {
     return value;
   }
-  return "wrap";
+  return DEFAULT_WRAP;
 }
 
 export function toggleWrap(current: WrapMode): WrapMode {

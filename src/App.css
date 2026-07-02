@@ -178,6 +178,12 @@ body,
   max-width: 72ch;
 }
 
+[data-wrap="wrap"] .editor {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  overflow-x: hidden;
+}
+
 [data-wrap="nowrap"] .editor {
   white-space: pre;
   overflow-x: auto;
