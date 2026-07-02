@@ -1,4 +1,4 @@
-import { mostRecentVaultDocument } from "./vault";
+import { peekMostRecentVaultDocument } from "./vault";
 
 const STORAGE_KEY = "kens-editor-onboarding-complete";
 
@@ -21,7 +21,7 @@ export async function resolveOnboardingStatus(): Promise<OnboardingStatus> {
     return "complete";
   }
 
-  const recent = await mostRecentVaultDocument();
+  const recent = await peekMostRecentVaultDocument();
   if (recent !== null) {
     completeOnboarding();
     return "complete";

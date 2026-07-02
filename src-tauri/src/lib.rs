@@ -144,9 +144,13 @@ fn write_text_file(path: String, contents: String) -> Result<(), String> {
 #[tauri::command]
 fn list_vault_documents() -> Result<Vec<VaultDocument>, String> {
     let dir = ensure_vault_exists()?;
+    read_vault_documents(&dir)
+}
+
+fn read_vault_documents(dir: &Path) -> Result<Vec<VaultDocument>, String> {
     let mut documents = Vec::new();
 
-    for entry in fs::read_dir(&dir).map_err(|error| error.to_string())? {
+    for entry in fs::read_dir(dir).map_err(|error| error.to_string())? {
         let entry = entry.map_err(|error| error.to_string())?;
         let path = entry.path();
 
@@ -172,12 +176,23 @@ fn list_vault_documents() -> Result<Vec<VaultDocument>, String> {
 
 #[tauri::command]
 fn most_recent_vault_document() -> Result<Option<String>, String> {
-    Ok(
-        list_vault_documents()?
-            .into_iter()
-            .max_by_key(|document| document.modified_ms)
-            .map(|document| document.path),
-    )
+    Ok(list_vault_documents()?
+        .into_iter()
+        .max_by_key(|document| document.modified_ms)
+        .map(|document| document.path))
+}
+
+#[tauri::command]
+fn peek_most_recent_vault_document() -> Result<Option<String>, String> {
+    let dir = vault_dir()?;
+    if !dir.is_dir() {
+        return Ok(None);
+    }
+
+    Ok(read_vault_documents(&dir)?
+        .into_iter()
+        .max_by_key(|document| document.modified_ms)
+        .map(|document| document.path))
 }
 
 #[tauri::command]
@@ -242,6 +257,7 @@ pub fn run() {
             write_text_file,
             list_vault_documents,
             most_recent_vault_document,
+            peek_most_recent_vault_document,
             create_vault_document,
             delete_vault_document,
             reveal_vault_in_finder,

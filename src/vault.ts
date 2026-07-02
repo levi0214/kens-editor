@@ -16,6 +16,10 @@ export async function mostRecentVaultDocument(): Promise<string | null> {
   return invoke<string | null>("most_recent_vault_document");
 }
 
+export async function peekMostRecentVaultDocument(): Promise<string | null> {
+  return invoke<string | null>("peek_most_recent_vault_document");
+}
+
 export async function createVaultDocument(): Promise<string> {
   return invoke<string>("create_vault_document");
 }
