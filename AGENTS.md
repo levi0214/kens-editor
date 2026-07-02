@@ -1,6 +1,6 @@
 # Ken's Editor
 
-A Mac text editor. Simple. Fast. A little rough.
+A Mac text editor. Plaintext only — no markdown rendering or preview.
 
 ## Mindset
 
