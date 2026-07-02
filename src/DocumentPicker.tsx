@@ -86,13 +86,18 @@ export function DocumentPicker({
         return;
       }
 
-      if (event.key === "ArrowDown") {
+      const key = event.key.toLowerCase();
+      const plain = !event.metaKey && !event.ctrlKey && !event.altKey;
+      const moveDown = event.key === "ArrowDown" || (plain && key === "j");
+      const moveUp = event.key === "ArrowUp" || (plain && key === "k");
+
+      if (moveDown) {
         event.preventDefault();
         setActiveIndex((index) => Math.min(index + 1, documents.length - 1));
         return;
       }
 
-      if (event.key === "ArrowUp") {
+      if (moveUp) {
         event.preventDefault();
         setActiveIndex((index) => Math.max(index - 1, 0));
       }
