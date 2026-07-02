@@ -3,12 +3,18 @@ export function fileName(path: string): string {
   return parts[parts.length - 1] || path;
 }
 
-export function windowTitle(path: string | null, dirty: boolean): string {
-  const marker = dirty ? " •" : "";
-
-  if (path) {
-    return `${fileName(path)}${marker}`;
+export function documentLabel(path: string | null, text: string): string {
+  if (path === null) {
+    return "Ken's Editor";
   }
 
-  return `Ken's Editor${marker}`;
+  if (text.length === 0) {
+    return "New document";
+  }
+
+  return fileName(path);
+}
+
+export function windowTitle(path: string | null, text: string): string {
+  return documentLabel(path, text);
 }
