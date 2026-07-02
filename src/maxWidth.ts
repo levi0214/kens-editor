@@ -14,7 +14,7 @@ export function storedMaxWidth(): MaxWidthMode {
   if (value === "full" || value === "narrow") {
     return value;
   }
-  return "full";
+  return "narrow";
 }
 
 export function toggleMaxWidth(current: MaxWidthMode): MaxWidthMode {

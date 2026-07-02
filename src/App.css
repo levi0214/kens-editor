@@ -16,10 +16,6 @@ body,
 }
 
 [data-font-size="s"] {
-  --editor-font-size: 12px;
-}
-
-[data-font-size="m"] {
   --editor-font-size: 14px;
 }
 

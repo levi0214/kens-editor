@@ -1,21 +1,23 @@
-export type FontSize = "s" | "m" | "l";
+export type FontSize = "s" | "l";
 
 const STORAGE_KEY = "kens-editor-font-size";
 
-const ORDER: FontSize[] = ["s", "m", "l"];
+const ORDER: FontSize[] = ["s", "l"];
 
 export const FONT_SIZE_PRESETS: Record<FontSize, number> = {
-  s: 12,
-  m: 14,
+  s: 14,
   l: 18,
 };
 
 export function storedFontSize(): FontSize {
   const value = localStorage.getItem(STORAGE_KEY);
-  if (value === "s" || value === "m" || value === "l") {
+  if (value === "s" || value === "l") {
     return value;
   }
-  return "m";
+  if (value === "m") {
+    return "s";
+  }
+  return "s";
 }
 
 export function nextFontSize(current: FontSize): FontSize {
