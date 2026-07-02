@@ -169,6 +169,7 @@ body,
 
 .statusbar {
   display: flex;
+  flex-shrink: 0;
   justify-content: space-between;
   gap: 12px;
   padding: 4px 14px 2px;
@@ -177,6 +178,13 @@ body,
   background: var(--editor-bg);
   -webkit-app-region: no-drag;
   app-region: no-drag;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.statusbar-hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .statusbar-left {

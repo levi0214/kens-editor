@@ -46,6 +46,7 @@ import {
   type ThemeMode,
 } from "./theme";
 import { useAutoSave } from "./useAutoSave";
+import { useChromeIdle } from "./useChromeIdle";
 import {
   listVaultDocuments,
   mostRecentVaultDocument,
@@ -86,6 +87,7 @@ function App() {
   const [maxWidth, setMaxWidth] = useState<MaxWidthMode>(storedMaxWidth);
   const [theme, setTheme] = useState<ThemeMode>(storedTheme);
   const { flush, markLoaded, saveError } = useAutoSave(text, path);
+  const statusbarVisible = useChromeIdle(!pickerOpen && !saveError);
 
   const commitFontSize = useCallback((pick: (current: FontSize) => FontSize) => {
     setFontSize((current) => {
@@ -391,7 +393,7 @@ function App() {
           disabled={!ready}
         />
       </div>
-      <footer className="statusbar">
+      <footer className={`statusbar${statusbarVisible ? "" : " statusbar-hidden"}`}>
         <div className="statusbar-left">
           {path && (
             <button
