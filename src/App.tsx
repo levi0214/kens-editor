@@ -47,10 +47,14 @@ import {
 } from "./theme";
 import { useAutoSave } from "./useAutoSave";
 import {
-  createVaultDocument,
   listVaultDocuments,
   mostRecentVaultDocument,
 } from "./vault";
+import {
+  createPristineDraft,
+  discardPristineDraft,
+  forgetDraft,
+} from "./sessionDrafts";
 import { documentLabel, windowTitle } from "./windowTitle";
 import "./App.css";
 
@@ -187,9 +191,10 @@ function App() {
       }
 
       await flush();
+      await discardPristineDraft(path, text);
       await loadFromPath(filePath);
     },
-    [flush, loadFromPath, path],
+    [flush, loadFromPath, path, text],
   );
 
   const newDocument = useCallback(async () => {
@@ -200,20 +205,25 @@ function App() {
     }
 
     await flush();
-    const filePath = await createVaultDocument();
+    await discardPristineDraft(path, text);
+    const filePath = await createPristineDraft();
     setPath(filePath);
     setText("");
     markLoaded(filePath, "");
     pulseNewDocument();
     focusEditor(editorRef.current);
-  }, [flush, markLoaded, pulseNewDocument, text]);
+  }, [flush, markLoaded, path, pulseNewDocument, text]);
 
   useEffect(() => {
     let active = true;
 
     void (async () => {
       const recent = await mostRecentVaultDocument();
-      const filePath = recent ?? (await createVaultDocument());
+      let filePath = recent;
+
+      if (filePath === null) {
+        filePath = await createPristineDraft();
+      }
 
       if (!active) {
         return;
@@ -256,6 +266,8 @@ function App() {
 
   const handleDocumentDeleted = useCallback(
     async (deletedPath: string) => {
+      forgetDraft(deletedPath);
+
       if (deletedPath !== path) {
         return;
       }
@@ -268,7 +280,7 @@ function App() {
         return;
       }
 
-      const filePath = await createVaultDocument();
+      const filePath = await createPristineDraft();
       setPath(filePath);
       setText("");
       markLoaded(filePath, "");
@@ -367,7 +379,13 @@ function App() {
           ref={editorRef}
           className="editor"
           value={text}
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => {
+            const next = event.target.value;
+            setText(next);
+            if (next.length > 0 && path) {
+              forgetDraft(path);
+            }
+          }}
           spellCheck={false}
           wrap={wrap === "wrap" ? "soft" : "off"}
           disabled={!ready}
