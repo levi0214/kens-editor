@@ -11,9 +11,22 @@ body,
 [data-theme="light"] {
   --editor-fg: #1a1a1a;
   --editor-bg: #fff;
+  --editor-font-size: 14px;
   --statusbar-fg: #666;
   --statusbar-bg: #f5f5f5;
   --statusbar-border: #e0e0e0;
+}
+
+[data-font-size="s"] {
+  --editor-font-size: 12px;
+}
+
+[data-font-size="m"] {
+  --editor-font-size: 14px;
+}
+
+[data-font-size="l"] {
+  --editor-font-size: 18px;
 }
 
 [data-theme="dark"] {
@@ -57,8 +70,8 @@ body,
   padding: 12px;
   resize: none;
   outline: none;
-  font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    monospace;
+  font: var(--editor-font-size) / 1.5 ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, monospace;
   color: var(--editor-fg);
   background: transparent;
 }
@@ -75,6 +88,14 @@ body,
   border-top: 1px solid var(--statusbar-border);
 }
 
+.statusbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
 .statusbar-path {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -83,4 +104,32 @@ body,
 
 .statusbar-flag {
   flex-shrink: 0;
+}
+
+.font-size-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  font: inherit;
+  color: inherit;
+  background: none;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.font-size-toggle:hover {
+  opacity: 0.85;
+}
+
+.font-size-toggle-icon {
+  font-size: 11px;
+  letter-spacing: -0.03em;
+  opacity: 0.85;
+}
+
+.font-size-toggle-value {
+  font-variant-numeric: tabular-nums;
 }

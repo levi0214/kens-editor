@@ -2,6 +2,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  applyFontSize,
+  FONT_SIZE_PRESETS,
+  nextFontSize,
+  storedFontSize,
+  type FontSize,
+} from "./fontSize";
 import { windowTitle } from "./windowTitle";
 import "./App.css";
 
@@ -15,7 +22,18 @@ function App() {
   const [text, setText] = useState("");
   const [path, setPath] = useState<string | null>(null);
   const [savedText, setSavedText] = useState("");
+  const [fontSize, setFontSize] = useState<FontSize>(storedFontSize);
   const dirty = text !== savedText;
+
+  const cycleFontSize = useCallback(() => {
+    setFontSize((current) => {
+      const next = nextFontSize(current);
+      applyFontSize(next);
+      return next;
+    });
+  }, []);
+
+  const fontSizePixels = FONT_SIZE_PRESETS[fontSize];
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -121,8 +139,6 @@ function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [openFile, saveFile, saveFileAs]);
 
-  const showStatus = path !== null || dirty;
-
   return (
     <div className="app">
       <textarea
@@ -132,12 +148,23 @@ function App() {
         onChange={(event) => setText(event.target.value)}
         spellCheck={false}
       />
-      {showStatus && (
-        <footer className="statusbar">
+      <footer className="statusbar">
+        <div className="statusbar-left">
           {path && <span className="statusbar-path">{path}</span>}
           {dirty && <span className="statusbar-flag">Not saved</span>}
-        </footer>
-      )}
+        </div>
+        <button
+          type="button"
+          className="font-size-toggle"
+          aria-label={`Font size, ${fontSizePixels}px. Click to change.`}
+          onClick={cycleFontSize}
+        >
+          <span className="font-size-toggle-icon" aria-hidden="true">
+            Aa
+          </span>
+          <span className="font-size-toggle-value">{fontSizePixels}</span>
+        </button>
+      </footer>
     </div>
   );
 }
