@@ -28,17 +28,21 @@ function App() {
     void getCurrentWindow().setTitle(windowTitle(path, dirty));
   }, [path, dirty]);
 
+  const loadFromPath = useCallback(async (filePath: string) => {
+    const contents = await invoke<string>("read_text_file", { path: filePath });
+    setPath(filePath);
+    setText(contents);
+    setSavedText(contents);
+  }, []);
+
   const openFile = useCallback(async () => {
     const selected = await open({ multiple: false });
     if (selected === null) {
       return;
     }
 
-    const contents = await invoke<string>("read_text_file", { path: selected });
-    setPath(selected);
-    setText(contents);
-    setSavedText(contents);
-  }, []);
+    await loadFromPath(selected);
+  }, [loadFromPath]);
 
   const saveToPath = useCallback(async (targetPath: string) => {
     await invoke("write_text_file", { path: targetPath, contents: text });
@@ -66,6 +70,29 @@ function App() {
     }
     await saveToPath(selected);
   }, [path, saveToPath]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    void getCurrentWindow()
+      .onDragDropEvent((event) => {
+        if (event.payload.type !== "drop") {
+          return;
+        }
+
+        const filePath = event.payload.paths[0];
+        if (filePath) {
+          void loadFromPath(filePath);
+        }
+      })
+      .then((stop) => {
+        unlisten = stop;
+      });
+
+    return () => {
+      unlisten?.();
+    };
+  }, [loadFromPath]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
