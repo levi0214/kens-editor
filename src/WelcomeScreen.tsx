@@ -13,9 +13,9 @@ export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
         开始写作
       </button>
       <div className="welcome-details">
-        <p>点击开始后会在「文稿」里创建 KensEditor 文件夹。</p>
+        <p>点击「开始写作」后，会在「文稿」里创建「KensEditor」文件夹。</p>
         <p>你写下的内容会自动保存在那里。</p>
-        <p>无需联网，内容只留在这台 Mac 上。</p>
+        <p>无需联网，只保存在这台 Mac 上。</p>
       </div>
     </div>
   );
