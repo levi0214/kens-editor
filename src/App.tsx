@@ -168,7 +168,6 @@ function App() {
       />
       <footer className="statusbar">
         <div className="statusbar-left">
-          {path && <span className="statusbar-path">{path}</span>}
           {dirty && <span className="statusbar-flag">Not saved</span>}
         </div>
         <div className="statusbar-controls">

@@ -99,15 +99,8 @@ body,
 .statusbar-left {
   display: flex;
   align-items: center;
-  gap: 12px;
   min-width: 0;
   flex: 1;
-}
-
-.statusbar-path {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .statusbar-flag {
