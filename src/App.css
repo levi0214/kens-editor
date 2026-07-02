@@ -81,7 +81,7 @@ body,
 
 .titlebar .titlebar-new-wrap {
   position: absolute;
-  top: 4px;
+  top: 0;
   right: 12px;
   z-index: 2;
   transition: opacity 0.2s ease;
@@ -98,8 +98,8 @@ body,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 24px;
+  min-width: 28px;
+  min-height: 28px;
   padding: 0;
   border: none;
   border-radius: 6px;
@@ -114,12 +114,13 @@ body,
 
 .titlebar-new-icon {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 .titlebar-new:hover {
   opacity: 1;
+  background: rgb(127 127 127 / 10%);
 }
 
 .titlebar-new-pulse {
@@ -204,7 +205,6 @@ body,
   gap: 12px;
   min-width: 0;
   flex: 1;
-  opacity: 0.55;
 }
 
 .statusbar-name {
@@ -289,7 +289,8 @@ body,
   gap: 4px;
   min-width: 0;
   max-width: 100%;
-  padding: 2px 6px;
+  min-height: 30px;
+  padding: 2px 8px;
   border: none;
   border-radius: 6px;
   font: inherit;
@@ -398,6 +399,7 @@ body,
 
 .statusbar-toggle:hover {
   opacity: 1;
+  background: rgb(127 127 127 / 10%);
 }
 
 .statusbar-toggle-icon {
