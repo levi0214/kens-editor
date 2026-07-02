@@ -411,18 +411,11 @@ body,
 
 .picker-item {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
   width: 100%;
-  padding: 8px 10px;
-  border: none;
+  padding-right: 6px;
   border-radius: 8px;
-  font: inherit;
-  text-align: left;
-  color: inherit;
-  background: none;
-  cursor: pointer;
   opacity: 0.75;
 }
 
@@ -432,9 +425,103 @@ body,
   background: rgb(127 127 127 / 10%);
 }
 
-.picker-item-preview {
+.picker-item-confirm {
+  opacity: 1;
+  background: rgb(220 60 60 / 16%);
+}
+
+.picker-item-open {
   flex: 1;
   min-width: 0;
+  padding: 8px 0 8px 10px;
+  border: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.picker-item-meta {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.picker-item-cancel,
+.picker-item-confirm-delete,
+.picker-item-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.picker-item-delete {
+  width: 0;
+  height: 28px;
+  padding: 0;
+  overflow: hidden;
+  color: inherit;
+  background: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.picker-item:hover .picker-item-delete,
+.picker-item-delete:focus-visible {
+  width: 28px;
+  opacity: 0.65;
+  pointer-events: auto;
+}
+
+.picker-item-delete:hover {
+  opacity: 1;
+  background: rgb(220 60 60 / 18%);
+}
+
+.picker-item-cancel,
+.picker-item-confirm-delete {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
+.picker-item-cancel {
+  color: inherit;
+  background: rgb(127 127 127 / 14%);
+  opacity: 0.85;
+}
+
+.picker-item-cancel:hover {
+  opacity: 1;
+  background: rgb(127 127 127 / 22%);
+}
+
+.picker-item-confirm-delete {
+  color: #fff;
+  background: rgb(210 55 55);
+}
+
+.picker-item-confirm-delete:hover {
+  background: rgb(190 45 45);
+}
+
+.picker-item-icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.picker-item-preview {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -446,7 +533,7 @@ body,
 
 .picker-item-time {
   flex-shrink: 0;
-  padding-top: 1px;
   opacity: 0.55;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }

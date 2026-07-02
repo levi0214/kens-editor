@@ -33,6 +33,13 @@ fn is_vault_text_file(path: &Path) -> bool {
     path.is_file() && path.extension().is_some_and(|extension| extension == "txt")
 }
 
+fn is_vault_path(path: &Path) -> Result<bool, String> {
+    let vault = ensure_vault_exists()?;
+    let canonical_vault = fs::canonicalize(&vault).map_err(|error| error.to_string())?;
+    let canonical_path = fs::canonicalize(path).map_err(|error| error.to_string())?;
+    Ok(canonical_path.starts_with(canonical_vault))
+}
+
 fn modified_ms(path: &Path) -> Result<u64, String> {
     let modified = fs::metadata(path)
         .map_err(|error| error.to_string())?
@@ -169,6 +176,21 @@ fn create_vault_document() -> Result<String, String> {
 }
 
 #[tauri::command]
+fn delete_vault_document(path: String) -> Result<(), String> {
+    let path = PathBuf::from(path);
+
+    if !is_vault_path(&path)? {
+        return Err("Not a vault document".to_string());
+    }
+
+    if path.exists() {
+        fs::remove_file(&path).map_err(|error| error.to_string())?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 fn reveal_vault_in_finder() -> Result<(), String> {
     let dir = ensure_vault_exists()?;
 
@@ -208,6 +230,7 @@ pub fn run() {
             list_vault_documents,
             most_recent_vault_document,
             create_vault_document,
+            delete_vault_document,
             reveal_vault_in_finder,
         ])
         .run(tauri::generate_context!())

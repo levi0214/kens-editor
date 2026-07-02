@@ -19,6 +19,10 @@ export async function createVaultDocument(): Promise<string> {
   return invoke<string>("create_vault_document");
 }
 
+export async function deleteVaultDocument(path: string): Promise<void> {
+  await invoke("delete_vault_document", { path });
+}
+
 export async function revealVaultInFinder(): Promise<void> {
   await invoke("reveal_vault_in_finder");
 }

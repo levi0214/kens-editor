@@ -117,3 +117,30 @@ export function FinderIcon(props: IconProps) {
     </Icon>
   );
 }
+
+export function TrashIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M3.5 4.5h9" />
+      <path d="M5.5 4.5V3.5h5v1" />
+      <path d="M5 4.5v6.5h6V4.5" />
+    </Icon>
+  );
+}
+
+export function CloseIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4.5 4.5l7 7" />
+      <path d="M11.5 4.5l-7 7" />
+    </Icon>
+  );
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M3.5 8.5 6.5 11.5 12.5 5" />
+    </Icon>
+  );
+}

@@ -45,6 +45,7 @@ import {
 import { useAutoSave } from "./useAutoSave";
 import {
   createVaultDocument,
+  listVaultDocuments,
   mostRecentVaultDocument,
 } from "./vault";
 import { documentLabel, windowTitle } from "./windowTitle";
@@ -233,6 +234,28 @@ function App() {
     await saveToPath(selected);
   }, [path, saveToPath]);
 
+  const handleDocumentDeleted = useCallback(
+    async (deletedPath: string) => {
+      if (deletedPath !== path) {
+        return;
+      }
+
+      const remaining = await listVaultDocuments();
+      const nextPath = remaining[0]?.path;
+
+      if (nextPath) {
+        await loadFromPath(nextPath);
+        return;
+      }
+
+      const filePath = await createVaultDocument();
+      setPath(filePath);
+      setText("");
+      markLoaded(filePath, "");
+    },
+    [loadFromPath, markLoaded, path],
+  );
+
   useEffect(() => {
     let unlisten: (() => void) | undefined;
 
@@ -396,6 +419,9 @@ function App() {
           currentPath={path}
           currentText={text}
           onClose={() => setPickerOpen(false)}
+          onDelete={(filePath) => {
+            void handleDocumentDeleted(filePath);
+          }}
           onSelect={(filePath) => {
             void switchToPath(filePath);
           }}
