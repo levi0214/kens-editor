@@ -170,8 +170,14 @@ body,
   background: transparent;
   white-space: pre-wrap;
   overflow-wrap: break-word;
+  overflow-y: auto;
+  scrollbar-width: none;
   -webkit-app-region: no-drag;
   app-region: no-drag;
+}
+
+.editor::-webkit-scrollbar {
+  display: none;
 }
 
 [data-max-width="narrow"] .editor {
