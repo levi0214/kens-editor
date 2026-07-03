@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { documentIndex, pickerMoveStep } from "./documentNav";
+import { adjacentDocumentPath, pickerMoveStep } from "./documentNav";
 import { KeyHints } from "./keyHint";
 import { previewFromText } from "./preview";
 import { CheckIcon, CloseIcon, FinderIcon, TrashIcon } from "./statusBarIcons";
@@ -29,10 +29,9 @@ export function DocumentPicker({
   const [documents, setDocuments] = useState<VaultDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmDeletePath, setConfirmDeletePath] = useState<string | null>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const selectedItemRef = useRef<HTMLDivElement | null>(null);
   const confirmDeleteRef = useRef<HTMLButtonElement>(null);
-  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   useEffect(() => {
     let active = true;
@@ -65,19 +64,6 @@ export function DocumentPicker({
     [onDelete],
   );
 
-  const moveSelection = useCallback(
-    (step: -1 | 1) => {
-      const nextIndex = Math.max(0, Math.min(activeIndex + step, documents.length - 1));
-      if (nextIndex === activeIndex) {
-        return;
-      }
-
-      setActiveIndex(nextIndex);
-      onSwitch(documents[nextIndex].path);
-    },
-    [activeIndex, documents, onSwitch],
-  );
-
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Enter" && confirmDeletePath) {
@@ -102,37 +88,33 @@ export function DocumentPicker({
 
       if (event.key === "Enter") {
         event.preventDefault();
-        const document = documents[activeIndex];
-        if (document) {
-          onSwitch(document.path);
-          onClose();
-        }
+        onClose();
         return;
       }
 
       const step = pickerMoveStep(event);
-      if (step !== 0) {
-        event.preventDefault();
-        moveSelection(step);
+      if (step === 0) {
+        return;
+      }
+
+      event.preventDefault();
+      const nextPath = adjacentDocumentPath(documents, currentPath, step);
+      if (nextPath) {
+        onSwitch(nextPath);
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeIndex, confirmDeletePath, documents, moveSelection, onClose, onSwitch, performDelete]);
+  }, [confirmDeletePath, currentPath, documents, onClose, onSwitch, performDelete]);
 
   useEffect(() => {
     if (loading || documents.length === 0) {
       return;
     }
 
-    const index = documentIndex(documents, currentPath);
-    setActiveIndex(index);
+    selectedItemRef.current?.scrollIntoView({ block: "nearest" });
   }, [currentPath, documents, loading]);
-
-  useEffect(() => {
-    itemRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
-  }, [activeIndex]);
 
   useEffect(() => {
     listRef.current?.focus();
@@ -184,9 +166,8 @@ export function DocumentPicker({
           ) : documents.length === 0 ? (
             <div className="picker-empty">No documents yet</div>
           ) : (
-            documents.map((document, index) => {
+            documents.map((document) => {
               const selected = document.path === currentPath;
-              const active = index === activeIndex;
               const confirming = document.path === confirmDeletePath;
               const preview =
                 document.path === currentPath
@@ -197,11 +178,8 @@ export function DocumentPicker({
               return (
                 <div
                   key={document.path}
-                  ref={(element) => {
-                    itemRefs.current[index] = element;
-                  }}
-                  className={`picker-item${selected ? " picker-item-selected" : ""}${active ? " picker-item-active" : ""}${confirming ? " picker-item-confirm" : ""}`}
-                  onMouseEnter={() => setActiveIndex(index)}
+                  ref={selected ? selectedItemRef : undefined}
+                  className={`picker-item${selected ? " picker-item-selected" : ""}${confirming ? " picker-item-confirm" : ""}`}
                 >
                   <button
                     type="button"

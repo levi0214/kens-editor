@@ -29,32 +29,25 @@ export function adjacentDocumentPath(
   return documents[nextIndex].path;
 }
 
-function vimKey(event: KeyboardEvent): string | null {
-  if (event.altKey || event.ctrlKey) {
-    return null;
+function keyStep(key: string): -1 | 0 | 1 {
+  switch (key.toLowerCase()) {
+    case "j":
+    case "arrowdown":
+      return 1;
+    case "k":
+    case "arrowup":
+      return -1;
+    default:
+      return 0;
   }
-
-  const key = event.key.toLowerCase();
-  return key === "j" || key === "k" ? key : null;
 }
 
 export function pickerMoveStep(event: KeyboardEvent): -1 | 0 | 1 {
-  if (event.key === "ArrowDown") {
-    return 1;
-  }
-  if (event.key === "ArrowUp") {
-    return -1;
+  if (event.altKey || event.ctrlKey) {
+    return 0;
   }
 
-  const key = vimKey(event);
-  if (key === "j") {
-    return 1;
-  }
-  if (key === "k") {
-    return -1;
-  }
-
-  return 0;
+  return keyStep(event.key);
 }
 
 export function flipDirection(event: KeyboardEvent): 1 | -1 | null {
@@ -62,13 +55,6 @@ export function flipDirection(event: KeyboardEvent): 1 | -1 | null {
     return null;
   }
 
-  const key = event.key.toLowerCase();
-  if (key === "j") {
-    return 1;
-  }
-  if (key === "k") {
-    return -1;
-  }
-
-  return null;
+  const step = keyStep(event.key);
+  return step === 0 ? null : step;
 }

@@ -593,15 +593,6 @@ body,
   background: rgb(127 127 127 / 10%);
 }
 
-.picker-item-active {
-  opacity: 1;
-  background: rgb(127 127 127 / 16%);
-}
-
-.picker-item-active.picker-item-selected {
-  background: rgb(127 127 127 / 20%);
-}
-
 .picker-item-confirm {
   opacity: 1;
   background: rgb(220 60 60 / 16%);
