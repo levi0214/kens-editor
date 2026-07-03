@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { documentIndex, pickerMoveStep } from "./documentNav";
 import { KeyHints } from "./keyHint";
 import { previewFromText } from "./preview";
 import { CheckIcon, CloseIcon, FinderIcon, TrashIcon } from "./statusBarIcons";
@@ -65,14 +66,16 @@ export function DocumentPicker({
   );
 
   const moveSelection = useCallback(
-    (nextIndex: number) => {
-      setActiveIndex(nextIndex);
-      const document = documents[nextIndex];
-      if (document) {
-        onSwitch(document.path);
+    (step: -1 | 1) => {
+      const nextIndex = Math.max(0, Math.min(activeIndex + step, documents.length - 1));
+      if (nextIndex === activeIndex) {
+        return;
       }
+
+      setActiveIndex(nextIndex);
+      onSwitch(documents[nextIndex].path);
     },
-    [documents, onSwitch],
+    [activeIndex, documents, onSwitch],
   );
 
   useEffect(() => {
@@ -107,26 +110,10 @@ export function DocumentPicker({
         return;
       }
 
-      const key = event.key.toLowerCase();
-      const vim = !event.altKey && !event.ctrlKey;
-      const moveDown = event.key === "ArrowDown" || (vim && key === "j");
-      const moveUp = event.key === "ArrowUp" || (vim && key === "k");
-
-      if (moveDown) {
+      const step = pickerMoveStep(event);
+      if (step !== 0) {
         event.preventDefault();
-        const nextIndex = Math.min(activeIndex + 1, documents.length - 1);
-        if (nextIndex !== activeIndex) {
-          moveSelection(nextIndex);
-        }
-        return;
-      }
-
-      if (moveUp) {
-        event.preventDefault();
-        const nextIndex = Math.max(activeIndex - 1, 0);
-        if (nextIndex !== activeIndex) {
-          moveSelection(nextIndex);
-        }
+        moveSelection(step);
       }
     };
 
@@ -139,8 +126,8 @@ export function DocumentPicker({
       return;
     }
 
-    const index = documents.findIndex((document) => document.path === currentPath);
-    setActiveIndex(index >= 0 ? index : 0);
+    const index = documentIndex(documents, currentPath);
+    setActiveIndex(index);
   }, [currentPath, documents, loading]);
 
   useEffect(() => {

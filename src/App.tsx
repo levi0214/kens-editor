@@ -3,6 +3,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DocumentPicker } from "./DocumentPicker";
+import { flipDirection } from "./documentNav";
 import {
   FontSizeIcon,
   FullWidthIcon,
@@ -48,6 +49,7 @@ import {
 } from "./theme";
 import { useAutoSave } from "./useAutoSave";
 import { useChromeIdle } from "./useChromeIdle";
+import { useDocumentSwitch } from "./useDocumentSwitch";
 import {
   listVaultDocuments,
   mostRecentVaultDocument,
@@ -87,10 +89,6 @@ function isTauri(): boolean {
 
 function App() {
   const editorRef = useRef<HTMLTextAreaElement>(null);
-  const pathRef = useRef<string | null>(null);
-  const textRef = useRef("");
-  const pendingNavigateRef = useRef<string | null>(null);
-  const navigationChainRef = useRef(Promise.resolve());
   const pulseTimerRef = useRef<number | undefined>(undefined);
   const hintTimerRef = useRef<number | undefined>(undefined);
   const menuActionsRef = useRef({
@@ -103,8 +101,6 @@ function App() {
   });
   const [text, setText] = useState("");
   const [path, setPath] = useState<string | null>(null);
-  pathRef.current = path;
-  textRef.current = text;
   const [ready, setReady] = useState(false);
   const [onboardingStatus, setOnboardingStatus] = useState(initialOnboardingStatus);
   const showWelcome = onboardingStatus === "welcome";
@@ -268,6 +264,16 @@ function App() {
     setPickerOpen(true);
   }, [hideHint]);
 
+  const { flipDocument, loadFromPath, switchToPath } = useDocumentSwitch({
+    path,
+    text,
+    setPath,
+    setText,
+    flush,
+    markLoaded,
+    openPicker,
+  });
+
   const pulseNewDocument = useCallback(() => {
     setNewDocPulse(true);
 
@@ -280,42 +286,6 @@ function App() {
       pulseTimerRef.current = undefined;
     }, NEW_DOC_PULSE_MS);
   }, []);
-
-  const loadFromPath = useCallback(
-    async (filePath: string) => {
-      const contents = await invoke<string>("read_text_file", { path: filePath });
-      setPath(filePath);
-      setText(contents);
-      pathRef.current = filePath;
-      textRef.current = contents;
-      markLoaded(filePath, contents);
-    },
-    [markLoaded],
-  );
-
-  const switchToPath = useCallback(
-    (filePath: string) => {
-      pendingNavigateRef.current = filePath;
-      navigationChainRef.current = navigationChainRef.current
-        .catch(() => undefined)
-        .then(async () => {
-          while (pendingNavigateRef.current !== null) {
-            const target = pendingNavigateRef.current;
-            pendingNavigateRef.current = null;
-
-            if (target === pathRef.current) {
-              continue;
-            }
-
-            await flush();
-            await discardPristineDraft(pathRef.current, textRef.current);
-            await loadFromPath(target);
-          }
-        });
-      return navigationChainRef.current;
-    },
-    [flush, loadFromPath],
-  );
 
   const newDocument = useCallback(async () => {
     if (!onboardingComplete) {
@@ -612,11 +582,25 @@ function App() {
         return;
       }
 
+      const key = event.key.toLowerCase();
+      const direction = flipDirection(event);
+
+      if (
+        direction !== null &&
+        !pickerOpen &&
+        !unmarkdownConfirmOpen &&
+        onboardingComplete &&
+        ready
+      ) {
+        event.preventDefault();
+        void flipDocument(direction);
+        return;
+      }
+
       if (!event.metaKey) {
         return;
       }
 
-      const key = event.key.toLowerCase();
       const menuOwned = key === "n" || key === "o" || key === "p" || key === "s";
       if (isTauri() && menuOwned) {
         return;
@@ -665,11 +649,15 @@ function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
     decreaseFontSize,
+    flipDocument,
     flush,
     increaseFontSize,
+    onboardingComplete,
     openUnmarkdownConfirm,
     newDocument,
     openFile,
+    pickerOpen,
+    ready,
     resetFontSize,
     saveFileAs,
     togglePicker,
@@ -677,6 +665,7 @@ function App() {
     toggleContentWidth,
     cycleTheme,
     showWelcome,
+    unmarkdownConfirmOpen,
   ]);
 
   return (
