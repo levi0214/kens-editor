@@ -1,6 +1,6 @@
 [package]
 name = "kens-editor"
-version = "0.9.0"
+version = "0.9.1"
 description = "Ken's Editor"
 authors = ["you"]
 edition = "2021"
