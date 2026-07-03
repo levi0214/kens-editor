@@ -18,16 +18,21 @@ function stripInline(text: string): string {
     .replace(/~~([^~]+)~~/g, "$1");
 }
 
+function isHorizontalRule(line: string): boolean {
+  return /^\s*([-*_])\1{2,}\s*$/.test(line);
+}
+
 function skipLine(line: string): boolean {
-  return (
-    /^\s*([-*_])\1{2,}\s*$/.test(line) ||
-    /^\s*\|?[\s|:-]+\|[\s|:-]+\|?\s*$/.test(line)
-  );
+  return /^\s*\|?[\s|:-]+\|[\s|:-]+\|?\s*$/.test(line);
 }
 
 function processLine(raw: string): ProcessedLine | null {
   if (skipLine(raw)) {
     return null;
+  }
+
+  if (isHorizontalRule(raw)) {
+    return line("---");
   }
 
   const header = raw.match(/^(\s*)(#{1,6}\s+)(.*)$/);
