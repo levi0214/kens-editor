@@ -296,8 +296,17 @@ body,
   bottom: auto;
 }
 
+.statusbar-doc-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex-shrink: 1;
+}
+
 .statusbar-doc-wrap {
   flex-shrink: 1;
+  min-width: 0;
 }
 
 .statusbar-doc {

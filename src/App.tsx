@@ -714,33 +714,57 @@ function App() {
         >
         <div className="statusbar-left">
           {path && (
-            <span
-              className="chrome-tip-wrap statusbar-doc-wrap"
-              onMouseEnter={() => showHint("documents")}
-              onMouseLeave={hideHint}
-              onFocus={() => showHint("documents")}
-              onBlur={hideHint}
-            >
-              <ChromeHint
-                name="Docs"
-                keys={["⌘", "P"]}
-                className="chrome-tip-left"
-                visible={activeHint === "documents"}
-              />
-              <button
-                type="button"
-                className="statusbar-doc"
-                aria-label="Documents. ⌘P to browse."
-                onClick={openPicker}
+            <div className="statusbar-doc-actions">
+              <span
+                className="chrome-tip-wrap statusbar-doc-wrap"
+                onMouseEnter={() => showHint("documents")}
+                onMouseLeave={hideHint}
+                onFocus={() => showHint("documents")}
+                onBlur={hideHint}
               >
-                <span className="statusbar-doc-name">
-                  {documentLabel(path, text)}
-                </span>
-                <span className="statusbar-doc-chevron" aria-hidden="true">
-                  ▾
-                </span>
-              </button>
-            </span>
+                <ChromeHint
+                  name="Docs"
+                  keys={["⌘", "P"]}
+                  className="chrome-tip-left"
+                  visible={activeHint === "documents"}
+                />
+                <button
+                  type="button"
+                  className="statusbar-doc"
+                  aria-label="Documents. ⌘P to browse."
+                  onClick={openPicker}
+                >
+                  <span className="statusbar-doc-name">
+                    {documentLabel(path, text)}
+                  </span>
+                  <span className="statusbar-doc-chevron" aria-hidden="true">
+                    ▾
+                  </span>
+                </button>
+              </span>
+              <span
+                className="chrome-tip-wrap"
+                onMouseEnter={() => showHint("unmarkdown")}
+                onMouseLeave={hideHint}
+                onFocus={() => showHint("unmarkdown")}
+                onBlur={hideHint}
+              >
+                <ChromeHint
+                  name="Unmarkdown"
+                  keys={["⇧", "⌘", "R"]}
+                  className="chrome-tip-left"
+                  visible={activeHint === "unmarkdown"}
+                />
+                <button
+                  type="button"
+                  className="statusbar-toggle"
+                  aria-label="Unmarkdown. ⌘⇧R."
+                  onClick={openUnmarkdownConfirm}
+                >
+                  <UnmarkdownIcon className="statusbar-toggle-icon" />
+                </button>
+              </span>
+            </div>
           )}
           {saveError && (
             <span className="statusbar-flag statusbar-flag-error">
@@ -749,28 +773,6 @@ function App() {
           )}
         </div>
         <div className="statusbar-controls">
-          <span
-            className="chrome-tip-wrap"
-            onMouseEnter={() => showHint("unmarkdown")}
-            onMouseLeave={hideHint}
-            onFocus={() => showHint("unmarkdown")}
-            onBlur={hideHint}
-          >
-            <ChromeHint
-              name="Unmarkdown"
-              keys={["⇧", "⌘", "R"]}
-              className="chrome-tip-right"
-              visible={activeHint === "unmarkdown"}
-            />
-            <button
-              type="button"
-              className="statusbar-toggle"
-              aria-label="Unmarkdown. ⌘⇧R."
-              onClick={openUnmarkdownConfirm}
-            >
-              <UnmarkdownIcon className="statusbar-toggle-icon" />
-            </button>
-          </span>
           <span
             className="chrome-tip-wrap"
             onMouseEnter={() => showHint("font")}
