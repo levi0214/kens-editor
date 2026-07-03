@@ -8,6 +8,7 @@ import {
   FullWidthIcon,
   NarrowWidthIcon,
   PlusIcon,
+  UnmarkdownIcon,
   ThemeDarkIcon,
   ThemeLightIcon,
   ThemeSystemIcon,
@@ -60,6 +61,8 @@ import { documentLabel, windowTitle } from "./windowTitle";
 import { ChromeHint } from "./keyHint";
 import { completeOnboarding, initialOnboardingStatus, resolveOnboardingStatus } from "./onboarding";
 import { WelcomeScreen } from "./WelcomeScreen";
+import { UnmarkdownConfirm } from "./UnmarkdownConfirm";
+import { useUnmarkdown } from "./useUnmarkdown";
 import "./App.css";
 
 const NEW_DOC_PULSE_MS = 900;
@@ -92,6 +95,7 @@ function App() {
     saveFile: () => {},
     saveFileAs: () => {},
     togglePicker: () => {},
+    unmarkdown: () => {},
   });
   const [text, setText] = useState("");
   const [path, setPath] = useState<string | null>(null);
@@ -416,6 +420,22 @@ function App() {
     });
   }, [hideHint]);
 
+  const {
+    confirmOpen: unmarkdownConfirmOpen,
+    openConfirm: openUnmarkdownConfirm,
+    confirm: confirmUnmarkdown,
+    cancel: cancelUnmarkdownConfirm,
+  } = useUnmarkdown({
+    editorRef,
+    text,
+    setText,
+    path,
+    ready,
+    onboardingComplete,
+    hideHint,
+    focusEditor,
+  });
+
   useEffect(() => {
     menuActionsRef.current = {
       newDocument: () => {
@@ -431,8 +451,9 @@ function App() {
         void saveFileAs();
       },
       togglePicker,
+      unmarkdown: openUnmarkdownConfirm,
     };
-  }, [flush, newDocument, openFile, saveFileAs, togglePicker]);
+  }, [flush, newDocument, openFile, openUnmarkdownConfirm, saveFileAs, togglePicker]);
 
   useEffect(() => {
     if (!isTauri()) {
@@ -513,6 +534,13 @@ function App() {
           await PredefinedMenuItem.new({ item: "Copy" }),
           await PredefinedMenuItem.new({ item: "Paste" }),
           await PredefinedMenuItem.new({ item: "SelectAll" }),
+          await separator(),
+          await MenuItem.new({
+            id: "unmarkdown",
+            text: "Unmarkdown",
+            accelerator: "CmdOrCtrl+Shift+R",
+            action: () => menuActionsRef.current.unmarkdown(),
+          }),
         ],
       });
 
@@ -593,6 +621,9 @@ function App() {
       } else if (key === "t" && event.shiftKey) {
         event.preventDefault();
         cycleTheme();
+      } else if (key === "r" && event.shiftKey) {
+        event.preventDefault();
+        openUnmarkdownConfirm();
       }
     };
 
@@ -602,6 +633,7 @@ function App() {
     decreaseFontSize,
     flush,
     increaseFontSize,
+    openUnmarkdownConfirm,
     newDocument,
     openFile,
     resetFontSize,
@@ -719,6 +751,28 @@ function App() {
         <div className="statusbar-controls">
           <span
             className="chrome-tip-wrap"
+            onMouseEnter={() => showHint("unmarkdown")}
+            onMouseLeave={hideHint}
+            onFocus={() => showHint("unmarkdown")}
+            onBlur={hideHint}
+          >
+            <ChromeHint
+              name="Unmarkdown"
+              keys={["⇧", "⌘", "R"]}
+              className="chrome-tip-right"
+              visible={activeHint === "unmarkdown"}
+            />
+            <button
+              type="button"
+              className="statusbar-toggle"
+              aria-label="Unmarkdown. ⌘⇧R."
+              onClick={openUnmarkdownConfirm}
+            >
+              <UnmarkdownIcon className="statusbar-toggle-icon" />
+            </button>
+          </span>
+          <span
+            className="chrome-tip-wrap"
             onMouseEnter={() => showHint("font")}
             onMouseLeave={hideHint}
             onFocus={() => showHint("font")}
@@ -822,6 +876,12 @@ function App() {
           </span>
         </div>
         </footer>
+      )}
+      {unmarkdownConfirmOpen && (
+        <UnmarkdownConfirm
+          onConfirm={confirmUnmarkdown}
+          onCancel={cancelUnmarkdownConfirm}
+        />
       )}
       {pickerOpen && onboardingComplete && (
         <DocumentPicker
