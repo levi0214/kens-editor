@@ -238,6 +238,21 @@ function App() {
   }, [path, text]);
 
   useEffect(() => {
+    if (path === null) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      const editor = editorRef.current;
+      if (!editor) {
+        return;
+      }
+      editor.scrollTop = 0;
+      editor.setSelectionRange(0, 0);
+    });
+  }, [path]);
+
+  useEffect(() => {
     return () => {
       if (pulseTimerRef.current !== undefined) {
         window.clearTimeout(pulseTimerRef.current);
