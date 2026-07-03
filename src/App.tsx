@@ -87,6 +87,10 @@ function isTauri(): boolean {
 
 function App() {
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const pathRef = useRef<string | null>(null);
+  const textRef = useRef("");
+  const pendingNavigateRef = useRef<string | null>(null);
+  const navigationChainRef = useRef(Promise.resolve());
   const pulseTimerRef = useRef<number | undefined>(undefined);
   const hintTimerRef = useRef<number | undefined>(undefined);
   const menuActionsRef = useRef({
@@ -99,6 +103,8 @@ function App() {
   });
   const [text, setText] = useState("");
   const [path, setPath] = useState<string | null>(null);
+  pathRef.current = path;
+  textRef.current = text;
   const [ready, setReady] = useState(false);
   const [onboardingStatus, setOnboardingStatus] = useState(initialOnboardingStatus);
   const showWelcome = onboardingStatus === "welcome";
@@ -265,22 +271,35 @@ function App() {
       const contents = await invoke<string>("read_text_file", { path: filePath });
       setPath(filePath);
       setText(contents);
+      pathRef.current = filePath;
+      textRef.current = contents;
       markLoaded(filePath, contents);
     },
     [markLoaded],
   );
 
   const switchToPath = useCallback(
-    async (filePath: string) => {
-      if (filePath === path) {
-        return;
-      }
+    (filePath: string) => {
+      pendingNavigateRef.current = filePath;
+      navigationChainRef.current = navigationChainRef.current
+        .catch(() => undefined)
+        .then(async () => {
+          while (pendingNavigateRef.current !== null) {
+            const target = pendingNavigateRef.current;
+            pendingNavigateRef.current = null;
 
-      await flush();
-      await discardPristineDraft(path, text);
-      await loadFromPath(filePath);
+            if (target === pathRef.current) {
+              continue;
+            }
+
+            await flush();
+            await discardPristineDraft(pathRef.current, textRef.current);
+            await loadFromPath(target);
+          }
+        });
+      return navigationChainRef.current;
     },
-    [flush, loadFromPath, path, text],
+    [flush, loadFromPath],
   );
 
   const newDocument = useCallback(async () => {
@@ -896,7 +915,7 @@ function App() {
           onDelete={(filePath) => {
             void handleDocumentDeleted(filePath);
           }}
-          onSelect={(filePath) => {
+          onSwitch={(filePath) => {
             void switchToPath(filePath);
           }}
         />

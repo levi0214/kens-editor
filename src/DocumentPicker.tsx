@@ -15,7 +15,7 @@ interface DocumentPickerProps {
   currentText: string;
   onClose: () => void;
   onDelete: (path: string) => void;
-  onSelect: (path: string) => void;
+  onSwitch: (path: string) => void;
 }
 
 export function DocumentPicker({
@@ -23,7 +23,7 @@ export function DocumentPicker({
   currentText,
   onClose,
   onDelete,
-  onSelect,
+  onSwitch,
 }: DocumentPickerProps) {
   const [documents, setDocuments] = useState<VaultDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +64,17 @@ export function DocumentPicker({
     [onDelete],
   );
 
+  const moveSelection = useCallback(
+    (nextIndex: number) => {
+      setActiveIndex(nextIndex);
+      const document = documents[nextIndex];
+      if (document) {
+        onSwitch(document.path);
+      }
+    },
+    [documents, onSwitch],
+  );
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Enter" && confirmDeletePath) {
@@ -86,26 +97,42 @@ export function DocumentPicker({
         return;
       }
 
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const document = documents[activeIndex];
+        if (document) {
+          onSwitch(document.path);
+          onClose();
+        }
+        return;
+      }
+
       const key = event.key.toLowerCase();
-      const plain = !event.metaKey && !event.ctrlKey && !event.altKey;
-      const moveDown = event.key === "ArrowDown" || (plain && key === "j");
-      const moveUp = event.key === "ArrowUp" || (plain && key === "k");
+      const vim = !event.altKey && !event.ctrlKey;
+      const moveDown = event.key === "ArrowDown" || (vim && key === "j");
+      const moveUp = event.key === "ArrowUp" || (vim && key === "k");
 
       if (moveDown) {
         event.preventDefault();
-        setActiveIndex((index) => Math.min(index + 1, documents.length - 1));
+        const nextIndex = Math.min(activeIndex + 1, documents.length - 1);
+        if (nextIndex !== activeIndex) {
+          moveSelection(nextIndex);
+        }
         return;
       }
 
       if (moveUp) {
         event.preventDefault();
-        setActiveIndex((index) => Math.max(index - 1, 0));
+        const nextIndex = Math.max(activeIndex - 1, 0);
+        if (nextIndex !== activeIndex) {
+          moveSelection(nextIndex);
+        }
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [confirmDeletePath, documents, onClose, performDelete]);
+  }, [activeIndex, confirmDeletePath, documents, moveSelection, onClose, onSwitch, performDelete]);
 
   useEffect(() => {
     if (loading || documents.length === 0) {
@@ -132,23 +159,11 @@ export function DocumentPicker({
 
   const openDocument = useCallback(
     (filePath: string) => {
-      onSelect(filePath);
+      onSwitch(filePath);
       onClose();
     },
-    [onClose, onSelect],
+    [onClose, onSwitch],
   );
-
-  const onListKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== "Enter" || confirmDeletePath || documents.length === 0) {
-      return;
-    }
-
-    event.preventDefault();
-    const document = documents[activeIndex];
-    if (document) {
-      openDocument(document.path);
-    }
-  };
 
   return (
     <div className="picker-backdrop" onMouseDown={onClose}>
@@ -161,7 +176,7 @@ export function DocumentPicker({
         <div className="picker-header">
           <span className="picker-title">Documents</span>
           <span className="picker-hint">
-            <KeyHints keys={["↑", "↓", "↵"]} />
+            <KeyHints keys={["↑", "↓", "↵", "Esc"]} />
           </span>
           <button
             type="button"
@@ -176,12 +191,7 @@ export function DocumentPicker({
             <span className="picker-finder-label">Finder</span>
           </button>
         </div>
-        <div
-          className="picker-list"
-          ref={listRef}
-          tabIndex={-1}
-          onKeyDown={onListKeyDown}
-        >
+        <div className="picker-list" ref={listRef} tabIndex={-1}>
           {loading ? (
             <div className="picker-empty">Loading…</div>
           ) : documents.length === 0 ? (
