@@ -45,7 +45,7 @@ export function UnmarkdownConfirm({ onConfirm, onCancel }: UnmarkdownConfirmProp
           Unmarkdown
         </h2>
         <p id="unmarkdown-confirm-body" className="unmarkdown-confirm-body">
-          去掉 Markdown 标记，让内容更好读。
+          去掉部分 Markdown 标记，让内容更好读。
         </p>
         <div className="unmarkdown-confirm-actions">
           <button
