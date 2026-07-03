@@ -746,15 +746,18 @@ function App() {
                 onBlur={hideHint}
               >
                 <ChromeHint
-                  name="Docs"
-                  keys={["⌘", "P"]}
+                  groups={[
+                    { label: "List", keys: ["⌘", "P"] },
+                    { label: "Prev", keys: ["⌘", "K"] },
+                    { label: "Next", keys: ["⌘", "J"] },
+                  ]}
                   className="chrome-tip-left"
                   visible={activeHint === "documents"}
                 />
                 <button
                   type="button"
                   className="statusbar-doc"
-                  aria-label="Documents. ⌘P to browse."
+                  aria-label="Documents. ⌘P to browse. ⌘J and ⌘K to flip."
                   onClick={openPicker}
                 >
                   <span className="statusbar-doc-name">

@@ -257,6 +257,26 @@ body,
   transition: opacity 0.12s ease;
 }
 
+.chrome-tip-name {
+  opacity: 0.55;
+}
+
+.chrome-tip-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chrome-tip-group-label {
+  font-size: 11px;
+  opacity: 0.55;
+}
+
+.chrome-tip-sep {
+  margin: 0 2px;
+  opacity: 0.35;
+}
+
 .chrome-tip-keys {
   display: inline-flex;
   align-items: center;
