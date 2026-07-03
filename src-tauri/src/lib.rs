@@ -53,11 +53,6 @@ fn modified_ms(path: &Path) -> Result<u64, String> {
     timestamp_ms(metadata.modified())
 }
 
-fn created_ms(path: &Path) -> Result<u64, String> {
-    let metadata = fs::metadata(path).map_err(|error| error.to_string())?;
-    timestamp_ms(metadata.created().or_else(|_| metadata.modified()))
-}
-
 fn collapse_whitespace(text: &str) -> String {
     let mut result = String::new();
     let mut last_was_space = false;
@@ -126,7 +121,6 @@ fn unique_vault_path(dir: &Path) -> PathBuf {
 struct VaultDocument {
     name: String,
     path: String,
-    created_ms: u64,
     modified_ms: u64,
     preview: String,
 }
@@ -164,7 +158,6 @@ fn read_vault_documents(dir: &Path) -> Result<Vec<VaultDocument>, String> {
                 .map(|name| name.to_string_lossy().into_owned())
                 .unwrap_or_default(),
             path: path.to_string_lossy().into_owned(),
-            created_ms: created_ms(&path)?,
             modified_ms: modified_ms(&path)?,
             preview: file_preview(&path)?,
         });
