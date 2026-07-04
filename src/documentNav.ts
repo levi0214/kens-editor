@@ -29,16 +29,25 @@ export function adjacentDocumentPath(
   return documents[nextIndex].path;
 }
 
-function keyStep(key: string): -1 | 0 | 1 {
+function jkStep(key: string): 1 | -1 | null {
   switch (key.toLowerCase()) {
     case "j":
-    case "arrowdown":
       return 1;
     case "k":
+      return -1;
+    default:
+      return null;
+  }
+}
+
+function arrowStep(key: string): 1 | -1 | null {
+  switch (key.toLowerCase()) {
+    case "arrowdown":
+      return 1;
     case "arrowup":
       return -1;
     default:
-      return 0;
+      return null;
   }
 }
 
@@ -47,7 +56,7 @@ export function pickerMoveStep(event: KeyboardEvent): -1 | 0 | 1 {
     return 0;
   }
 
-  return keyStep(event.key);
+  return jkStep(event.key) ?? arrowStep(event.key) ?? 0;
 }
 
 export function flipDirection(event: KeyboardEvent): 1 | -1 | null {
@@ -55,6 +64,5 @@ export function flipDirection(event: KeyboardEvent): 1 | -1 | null {
     return null;
   }
 
-  const step = keyStep(event.key);
-  return step === 0 ? null : step;
+  return jkStep(event.key);
 }
