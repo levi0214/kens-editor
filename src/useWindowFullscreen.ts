@@ -16,7 +16,7 @@ export function useWindowFullscreen(): void {
     }
 
     const appWindow = getCurrentWindow();
-    let unlisten: (() => void) | undefined;
+    const unlisteners: Array<() => void> = [];
     let cancelled = false;
     let lastActive: boolean | undefined;
 
@@ -30,17 +30,29 @@ export function useWindowFullscreen(): void {
       applyFullscreen(active);
     };
 
-    void sync();
+    const track = (listen: Promise<() => void>) => {
+      void listen.then((stop) => {
+        if (cancelled) {
+          stop();
+          return;
+        }
+        unlisteners.push(stop);
+      });
+    };
 
-    void appWindow.onResized(() => {
+    void sync();
+    track(appWindow.onResized(() => {
       void sync();
-    }).then((stop) => {
-      unlisten = stop;
-    });
+    }));
+    track(appWindow.onFocusChanged(() => {
+      void sync();
+    }));
 
     return () => {
       cancelled = true;
-      unlisten?.();
+      for (const stop of unlisteners) {
+        stop();
+      }
       applyFullscreen(false);
     };
   }, []);

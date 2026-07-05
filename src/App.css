@@ -187,7 +187,7 @@ body,
 }
 
 [data-max-width="narrow"][data-fullscreen="true"] .editor {
-  --editor-padding-top: clamp(72px, 14vh, 168px);
+  --editor-padding-top: 72px;
 }
 
 [data-wrap="wrap"] .editor {
