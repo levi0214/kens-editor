@@ -162,7 +162,9 @@ body,
   max-width: none;
   min-height: 0;
   border: none;
-  padding: 18px 21px 12px;
+  --editor-padding-top: 18px;
+  --editor-padding-bottom: clamp(48px, 8vh, 96px);
+  padding: var(--editor-padding-top) 21px var(--editor-padding-bottom);
   resize: none;
   outline: none;
   font: var(--editor-font-size) / 1.5 var(--app-font);
@@ -182,6 +184,10 @@ body,
 
 [data-max-width="narrow"] .editor {
   max-width: 72ch;
+}
+
+[data-max-width="narrow"][data-fullscreen="true"] .editor {
+  --editor-padding-top: clamp(72px, 14vh, 168px);
 }
 
 [data-wrap="wrap"] .editor {

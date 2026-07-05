@@ -50,6 +50,7 @@ import {
 import { useAutoSave } from "./useAutoSave";
 import { useChromeIdle } from "./useChromeIdle";
 import { useDocumentSwitch } from "./useDocumentSwitch";
+import { useWindowFullscreen } from "./useWindowFullscreen";
 import {
   listVaultDocuments,
   mostRecentVaultDocument,
@@ -118,6 +119,7 @@ function App() {
     !pickerOpen && !saveError && !showWelcome,
     chromeHovered,
   );
+  useWindowFullscreen();
 
   const showHint = useCallback((name: string) => {
     if (hintTimerRef.current !== undefined) {
