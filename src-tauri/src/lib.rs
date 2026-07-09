@@ -1,3 +1,4 @@
+use chrono::{Local, NaiveDateTime, TimeZone};
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -51,6 +52,23 @@ fn timestamp_ms(time: Result<std::time::SystemTime, std::io::Error>) -> Result<u
 fn modified_ms(path: &Path) -> Result<u64, String> {
     let metadata = fs::metadata(path).map_err(|error| error.to_string())?;
     timestamp_ms(metadata.modified())
+}
+
+/// Creation time from vault filenames like `2026-07-09_151300.txt`
+/// or `2026-07-09_151300_2.txt`. Falls back to None for nonstandard names.
+fn created_ms_from_name(name: &str) -> Option<u64> {
+    let stem = name.strip_suffix(".txt")?;
+    let stamp = stem.get(..17)?;
+    let naive = NaiveDateTime::parse_from_str(stamp, "%Y-%m-%d_%H%M%S").ok()?;
+    let local = Local.from_local_datetime(&naive).single()?;
+    u64::try_from(local.timestamp_millis()).ok()
+}
+
+fn created_ms(path: &Path, name: &str) -> Result<u64, String> {
+    if let Some(ms) = created_ms_from_name(name) {
+        return Ok(ms);
+    }
+    modified_ms(path)
 }
 
 fn collapse_whitespace(text: &str) -> String {
@@ -121,7 +139,7 @@ fn unique_vault_path(dir: &Path) -> PathBuf {
 struct VaultDocument {
     name: String,
     path: String,
-    modified_ms: u64,
+    created_ms: u64,
     preview: String,
 }
 
@@ -152,18 +170,20 @@ fn read_vault_documents(dir: &Path) -> Result<Vec<VaultDocument>, String> {
             continue;
         }
 
+        let name = path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_default();
+
         documents.push(VaultDocument {
-            name: path
-                .file_name()
-                .map(|name| name.to_string_lossy().into_owned())
-                .unwrap_or_default(),
+            created_ms: created_ms(&path, &name)?,
+            name,
             path: path.to_string_lossy().into_owned(),
-            modified_ms: modified_ms(&path)?,
             preview: file_preview(&path)?,
         });
     }
 
-    documents.sort_by(|left, right| right.modified_ms.cmp(&left.modified_ms));
+    documents.sort_by(|left, right| right.created_ms.cmp(&left.created_ms));
     Ok(documents)
 }
 
@@ -171,7 +191,7 @@ fn read_vault_documents(dir: &Path) -> Result<Vec<VaultDocument>, String> {
 fn most_recent_vault_document() -> Result<Option<String>, String> {
     Ok(list_vault_documents()?
         .into_iter()
-        .max_by_key(|document| document.modified_ms)
+        .max_by_key(|document| document.created_ms)
         .map(|document| document.path))
 }
 
@@ -184,7 +204,7 @@ fn peek_most_recent_vault_document() -> Result<Option<String>, String> {
 
     Ok(read_vault_documents(&dir)?
         .into_iter()
-        .max_by_key(|document| document.modified_ms)
+        .max_by_key(|document| document.created_ms)
         .map(|document| document.path))
 }
 

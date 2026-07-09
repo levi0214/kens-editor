@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 export interface VaultDocument {
   name: string;
   path: string;
-  modifiedMs: number;
+  createdMs: number;
   preview: string;
 }
 

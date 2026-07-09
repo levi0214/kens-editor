@@ -2,8 +2,8 @@ const MINUTE_MS = 60_000;
 const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
 
-export function relativeTime(modifiedMs: number, now = Date.now()): string {
-  const elapsed = Math.max(0, now - modifiedMs);
+export function relativeTime(createdMs: number, now = Date.now()): string {
+  const elapsed = Math.max(0, now - createdMs);
 
   if (elapsed < MINUTE_MS) {
     return "Just now";
