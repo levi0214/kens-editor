@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Ken's Editor",
-  "version": "0.9.3",
+  "version": "0.10.0",
   "identifier": "com.kens.editor",
   "mainBinaryName": "kens-editor",
   "build": {
