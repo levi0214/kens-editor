@@ -1,6 +1,8 @@
 # Ken's Editor
 
-A Mac text editor. Plaintext only — no markdown rendering or preview.
+A stack of autosaved blank pages on a Mac.
+
+Write, save, flip. Local plaintext in `~/Documents/KensEditor/`. No markdown rendering or preview. Don't grow into a notes app.
 
 ## Mindset
 
