@@ -7,6 +7,10 @@ export function useAutoSave(text: string, path: string | null) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const lastWrittenRef = useRef<{ path: string; text: string } | null>(null);
   const timerRef = useRef<number | undefined>(undefined);
+  const pathRef = useRef(path);
+  const textRef = useRef(text);
+  pathRef.current = path;
+  textRef.current = text;
 
   const write = useCallback(async (targetPath: string, contents: string) => {
     const lastWritten = lastWrittenRef.current;
@@ -32,10 +36,11 @@ export function useAutoSave(text: string, path: string | null) {
       timerRef.current = undefined;
     }
 
-    if (path !== null) {
-      await write(path, text);
+    const targetPath = pathRef.current;
+    if (targetPath !== null) {
+      await write(targetPath, textRef.current);
     }
-  }, [path, text, write]);
+  }, [write]);
 
   const markLoaded = useCallback((targetPath: string, contents: string) => {
     lastWrittenRef.current = { path: targetPath, text: contents };

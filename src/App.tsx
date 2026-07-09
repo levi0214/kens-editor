@@ -48,6 +48,7 @@ import {
   type ThemeMode,
 } from "./theme";
 import { useAutoSave } from "./useAutoSave";
+import { useFlushOnClose } from "./useFlushOnClose";
 import { useChromeIdle } from "./useChromeIdle";
 import { useDocumentSwitch } from "./useDocumentSwitch";
 import { useWindowFullscreen } from "./useWindowFullscreen";
@@ -115,6 +116,7 @@ function App() {
   const [chromeHovered, setChromeHovered] = useState(false);
   const [activeHint, setActiveHint] = useState<string | null>(null);
   const { flush, markLoaded, saveError } = useAutoSave(text, path);
+  useFlushOnClose(flush);
   const chromeVisible = useChromeIdle(
     !pickerOpen && !saveError && !showWelcome,
     chromeHovered,
