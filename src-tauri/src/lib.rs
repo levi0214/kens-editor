@@ -225,7 +225,7 @@ fn delete_vault_document(path: String) -> Result<(), String> {
     }
 
     if path.exists() {
-        fs::remove_file(&path).map_err(|error| error.to_string())?;
+        trash::delete(&path).map_err(|error| error.to_string())?;
     }
 
     Ok(())

@@ -18,3 +18,4 @@ dirs = "6"
 serde = { version = "1", features = ["derive"] }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
+trash = "5"

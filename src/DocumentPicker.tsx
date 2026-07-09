@@ -92,6 +92,19 @@ export function DocumentPicker({
         return;
       }
 
+      if (
+        event.metaKey &&
+        !event.shiftKey &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        event.key === "Backspace" &&
+        currentPath
+      ) {
+        event.preventDefault();
+        setConfirmDeletePath(currentPath);
+        return;
+      }
+
       const step = pickerMoveStep(event);
       if (step === 0) {
         return;
@@ -145,7 +158,7 @@ export function DocumentPicker({
         <div className="picker-header">
           <span className="picker-title">Documents</span>
           <span className="picker-hint">
-            <KeyHints keys={["↑", "↓", "↵", "Esc"]} />
+            <KeyHints keys={["↑", "↓", "⌘", "⌫", "↵", "Esc"]} />
           </span>
           <button
             type="button"
