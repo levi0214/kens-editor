@@ -626,7 +626,8 @@ body,
 
 .picker-item-cancel,
 .picker-item-confirm-delete,
-.picker-item-delete {
+.picker-item-delete,
+.picker-item-pin {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -637,7 +638,8 @@ body,
   cursor: pointer;
 }
 
-.picker-item-delete {
+.picker-item-delete,
+.picker-item-pin {
   width: 0;
   height: 28px;
   padding: 0;
@@ -649,15 +651,27 @@ body,
 }
 
 .picker-item:hover .picker-item-delete,
-.picker-item-delete:focus-visible {
+.picker-item-delete:focus-visible,
+.picker-item:hover .picker-item-pin,
+.picker-item-pin:focus-visible,
+.picker-item-pin-active {
   width: 28px;
   opacity: 0.65;
   pointer-events: auto;
 }
 
+.picker-item-pin-active {
+  opacity: 0.85;
+}
+
 .picker-item-delete:hover {
   opacity: 1;
   background: rgb(220 60 60 / 18%);
+}
+
+.picker-item-pin:hover {
+  opacity: 1;
+  background: rgb(127 127 127 / 14%);
 }
 
 .picker-item-cancel,

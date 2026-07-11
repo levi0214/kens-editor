@@ -52,10 +52,7 @@ import { useFlushOnClose } from "./useFlushOnClose";
 import { useChromeIdle } from "./useChromeIdle";
 import { useDocumentSwitch } from "./useDocumentSwitch";
 import { useWindowFullscreen } from "./useWindowFullscreen";
-import {
-  listVaultDocuments,
-  mostRecentVaultDocument,
-} from "./vault";
+import { mostRecentVaultDocument } from "./vault";
 import {
   createPristineDraft,
   discardPristineDraft,
@@ -379,8 +376,7 @@ function App() {
         return;
       }
 
-      const remaining = await listVaultDocuments();
-      const nextPath = remaining[0]?.path;
+      const nextPath = await mostRecentVaultDocument();
 
       if (nextPath) {
         await loadFromPath(nextPath);

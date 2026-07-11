@@ -2,12 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { adjacentDocumentPath, pickerMoveStep } from "./documentNav";
 import { KeyHints } from "./keyHint";
 import { previewFromText } from "./preview";
-import { CheckIcon, CloseIcon, FinderIcon, TrashIcon } from "./statusBarIcons";
+import { CheckIcon, CloseIcon, FinderIcon, PinFilledIcon, PinIcon, TrashIcon } from "./statusBarIcons";
 import { shortDate } from "./shortDate";
 import {
   deleteVaultDocument,
   listVaultDocuments,
   revealVaultInFinder,
+  toggleVaultDocumentPin,
   type VaultDocument,
 } from "./vault";
 
@@ -63,6 +64,12 @@ export function DocumentPicker({
     },
     [onDelete],
   );
+
+  const togglePin = useCallback(async (targetPath: string) => {
+    await toggleVaultDocumentPin(targetPath);
+    const items = await listVaultDocuments();
+    setDocuments(items);
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -241,15 +248,33 @@ export function DocumentPicker({
                         </button>
                       </>
                     ) : (
-                      <button
-                        type="button"
-                        className="picker-item-delete"
-                        title="Delete"
-                        aria-label="Delete document"
-                        onClick={() => setConfirmDeletePath(document.path)}
-                      >
-                        <TrashIcon className="picker-item-icon" />
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          className={`picker-item-pin${document.pinned ? " picker-item-pin-active" : ""}`}
+                          title={document.pinned ? "Unpin" : "Pin"}
+                          aria-label={document.pinned ? "Unpin document" : "Pin document"}
+                          aria-pressed={document.pinned}
+                          onClick={() => {
+                            void togglePin(document.path);
+                          }}
+                        >
+                          {document.pinned ? (
+                            <PinFilledIcon className="picker-item-icon" />
+                          ) : (
+                            <PinIcon className="picker-item-icon" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className="picker-item-delete"
+                          title="Delete"
+                          aria-label="Delete document"
+                          onClick={() => setConfirmDeletePath(document.path)}
+                        >
+                          <TrashIcon className="picker-item-icon" />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>

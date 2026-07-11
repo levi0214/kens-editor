@@ -5,6 +5,7 @@ export interface VaultDocument {
   path: string;
   createdMs: number;
   preview: string;
+  pinned: boolean;
 }
 
 export async function listVaultDocuments(): Promise<VaultDocument[]> {
@@ -25,6 +26,10 @@ export async function createVaultDocument(): Promise<string> {
 
 export async function deleteVaultDocument(path: string): Promise<void> {
   await invoke("delete_vault_document", { path });
+}
+
+export async function toggleVaultDocumentPin(path: string): Promise<boolean> {
+  return invoke<boolean>("toggle_vault_document_pin", { path });
 }
 
 export async function revealVaultInFinder(): Promise<void> {

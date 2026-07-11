@@ -1,10 +1,12 @@
 use chrono::{Local, NaiveDateTime, TimeZone};
+use std::collections::HashSet;
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 const VAULT_DIR_NAME: &str = "KensEditor";
+const PINS_FILE_NAME: &str = ".pins.json";
 const PREVIEW_MAX_CHARS: usize = 80;
 const PREVIEW_READ_BYTES: usize = 256;
 
@@ -134,6 +136,43 @@ fn unique_vault_path(dir: &Path) -> PathBuf {
     dir.join(format!("{stamp}_overflow.txt"))
 }
 
+fn pins_path(dir: &Path) -> PathBuf {
+    dir.join(PINS_FILE_NAME)
+}
+
+fn read_pins(dir: &Path) -> Result<HashSet<String>, String> {
+    let path = pins_path(dir);
+    if !path.exists() {
+        return Ok(HashSet::new());
+    }
+
+    let text = fs::read_to_string(&path).map_err(|error| error.to_string())?;
+    let names: Vec<String> = serde_json::from_str(&text).unwrap_or_default();
+    Ok(names.into_iter().collect())
+}
+
+fn write_pins(dir: &Path, pins: &HashSet<String>) -> Result<(), String> {
+    let path = pins_path(dir);
+    if pins.is_empty() {
+        if path.exists() {
+            fs::remove_file(&path).map_err(|error| error.to_string())?;
+        }
+        return Ok(());
+    }
+
+    let mut names: Vec<&String> = pins.iter().collect();
+    names.sort();
+    let text = serde_json::to_string(&names).map_err(|error| error.to_string())?;
+    write_atomic(&path, &text)
+}
+
+fn vault_file_name(path: &Path) -> Result<String, String> {
+    path.file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .filter(|name| name.ends_with(".txt"))
+        .ok_or_else(|| "Not a vault document".to_string())
+}
+
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct VaultDocument {
@@ -141,6 +180,7 @@ struct VaultDocument {
     path: String,
     created_ms: u64,
     preview: String,
+    pinned: bool,
 }
 
 #[tauri::command]
@@ -160,6 +200,7 @@ fn list_vault_documents() -> Result<Vec<VaultDocument>, String> {
 }
 
 fn read_vault_documents(dir: &Path) -> Result<Vec<VaultDocument>, String> {
+    let pins = read_pins(dir)?;
     let mut documents = Vec::new();
 
     for entry in fs::read_dir(dir).map_err(|error| error.to_string())? {
@@ -174,16 +215,23 @@ fn read_vault_documents(dir: &Path) -> Result<Vec<VaultDocument>, String> {
             .file_name()
             .map(|name| name.to_string_lossy().into_owned())
             .unwrap_or_default();
+        let pinned = pins.contains(&name);
 
         documents.push(VaultDocument {
             created_ms: created_ms(&path, &name)?,
             name,
             path: path.to_string_lossy().into_owned(),
             preview: file_preview(&path)?,
+            pinned,
         });
     }
 
-    documents.sort_by(|left, right| right.created_ms.cmp(&left.created_ms));
+    documents.sort_by(|left, right| {
+        right
+            .pinned
+            .cmp(&left.pinned)
+            .then(right.created_ms.cmp(&left.created_ms))
+    });
     Ok(documents)
 }
 
@@ -224,11 +272,40 @@ fn delete_vault_document(path: String) -> Result<(), String> {
         return Err("Not a vault document".to_string());
     }
 
+    let name = vault_file_name(&path)?;
+    let dir = ensure_vault_exists()?;
+
     if path.exists() {
         trash::delete(&path).map_err(|error| error.to_string())?;
     }
 
+    let mut pins = read_pins(&dir)?;
+    if pins.remove(&name) {
+        write_pins(&dir, &pins)?;
+    }
+
     Ok(())
+}
+
+#[tauri::command]
+fn toggle_vault_document_pin(path: String) -> Result<bool, String> {
+    let path = PathBuf::from(path);
+
+    if !is_vault_path(&path)? || !is_vault_text_file(&path) {
+        return Err("Not a vault document".to_string());
+    }
+
+    let name = vault_file_name(&path)?;
+    let dir = ensure_vault_exists()?;
+    let mut pins = read_pins(&dir)?;
+    let pinned = if pins.remove(&name) {
+        false
+    } else {
+        pins.insert(name);
+        true
+    };
+    write_pins(&dir, &pins)?;
+    Ok(pinned)
 }
 
 #[tauri::command]
@@ -273,6 +350,7 @@ pub fn run() {
             peek_most_recent_vault_document,
             create_vault_document,
             delete_vault_document,
+            toggle_vault_document_pin,
             reveal_vault_in_finder,
         ])
         .run(tauri::generate_context!())

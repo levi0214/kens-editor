@@ -1585,6 +1585,7 @@ dependencies = [
  "chrono",
  "dirs",
  "serde",
+ "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
