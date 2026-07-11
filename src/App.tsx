@@ -727,6 +727,24 @@ function App() {
                 forgetDraft(path);
               }
             }}
+            onKeyDown={(event) => {
+              if (event.key !== "Tab") {
+                return;
+              }
+              event.preventDefault();
+              if (event.shiftKey) {
+                return;
+              }
+              const editor = event.currentTarget;
+              const start = editor.selectionStart;
+              const end = editor.selectionEnd;
+              editor.setRangeText("\t", start, end, "end");
+              const next = editor.value;
+              setText(next);
+              if (next.length > 0 && path) {
+                forgetDraft(path);
+              }
+            }}
             spellCheck={false}
             wrap={wrap === "wrap" ? "soft" : "off"}
             disabled={!ready}
