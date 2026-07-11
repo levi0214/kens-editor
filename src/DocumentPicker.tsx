@@ -3,7 +3,7 @@ import { adjacentDocumentPath, pickerMoveStep } from "./documentNav";
 import { KeyHints } from "./keyHint";
 import { previewFromText } from "./preview";
 import { CheckIcon, CloseIcon, FinderIcon, TrashIcon } from "./statusBarIcons";
-import { relativeTime } from "./relativeTime";
+import { shortDate } from "./shortDate";
 import {
   deleteVaultDocument,
   listVaultDocuments,
@@ -213,7 +213,7 @@ export function DocumentPicker({
                   <div className="picker-item-meta">
                     {!confirming && (
                       <span className="picker-item-time">
-                        {relativeTime(document.createdMs)}
+                        {shortDate(document.createdMs)}
                       </span>
                     )}
                     {confirming ? (
