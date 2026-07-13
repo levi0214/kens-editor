@@ -66,7 +66,7 @@ import { UnmarkdownConfirm } from "./UnmarkdownConfirm";
 import { useUnmarkdown } from "./useUnmarkdown";
 import "./App.css";
 
-const NEW_DOC_PULSE_MS = 900;
+const NEW_DOC_PULSE_MS = 180;
 const HINT_DELAY_MS = 250;
 
 function focusEditor(editor: HTMLTextAreaElement | null): void {
@@ -265,14 +265,13 @@ function App() {
     setPickerOpen(true);
   }, [hideHint]);
 
-  const { flipDocument, loadFromPath, switchToPath } = useDocumentSwitch({
+  const { flipDocument, loadFromPath, switchToPath, listPath } = useDocumentSwitch({
     path,
     text,
     setPath,
     setText,
     flush,
     markLoaded,
-    openPicker,
   });
 
   const pulseNewDocument = useCallback(() => {
@@ -932,6 +931,7 @@ function App() {
       {pickerOpen && onboardingComplete && (
         <DocumentPicker
           currentPath={path}
+          listPath={listPath}
           currentText={text}
           onClose={() => {
             setPickerOpen(false);

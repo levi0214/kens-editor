@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { adjacentDocumentPath } from "./documentNav";
 import { discardPristineDraft } from "./sessionDrafts";
 import { listVaultDocuments } from "./vault";
@@ -11,7 +11,6 @@ interface UseDocumentSwitchOptions {
   setText: (text: string) => void;
   flush: () => Promise<void>;
   markLoaded: (path: string, text: string) => void;
-  openPicker: () => void;
 }
 
 export function useDocumentSwitch({
@@ -21,15 +20,18 @@ export function useDocumentSwitch({
   setText,
   flush,
   markLoaded,
-  openPicker,
 }: UseDocumentSwitchOptions) {
   const pathRef = useRef<string | null>(null);
   const textRef = useRef("");
   const pendingNavigateRef = useRef<string | null>(null);
   const navigationChainRef = useRef(Promise.resolve());
+  // Picker highlight; updates immediately while the editor path may still be loading.
+  const [listPath, setListPath] = useState<string | null>(null);
+  const listPathRef = useRef<string | null>(null);
 
   pathRef.current = path;
   textRef.current = text;
+  listPathRef.current = listPath;
 
   const loadFromPath = useCallback(
     async (filePath: string) => {
@@ -46,6 +48,7 @@ export function useDocumentSwitch({
   const switchToPath = useCallback(
     (filePath: string) => {
       pendingNavigateRef.current = filePath;
+      setListPath(filePath);
       navigationChainRef.current = navigationChainRef.current
         .catch(() => undefined)
         .then(async () => {
@@ -57,10 +60,17 @@ export function useDocumentSwitch({
               continue;
             }
 
+            const superseded = () => pendingNavigateRef.current !== null;
+
             await flush();
             await discardPristineDraft(pathRef.current, textRef.current);
+            if (superseded()) {
+              continue;
+            }
             await loadFromPath(target);
           }
+
+          setListPath(null);
         });
       return navigationChainRef.current;
     },
@@ -69,16 +79,15 @@ export function useDocumentSwitch({
 
   const flipDocument = useCallback(
     async (direction: 1 | -1) => {
-      openPicker();
-
       const documents = await listVaultDocuments();
-      const nextPath = adjacentDocumentPath(documents, pathRef.current, direction);
+      const from = listPathRef.current ?? pathRef.current;
+      const nextPath = adjacentDocumentPath(documents, from, direction);
       if (nextPath) {
         switchToPath(nextPath);
       }
     },
-    [openPicker, switchToPath],
+    [switchToPath],
   );
 
-  return { flipDocument, loadFromPath, switchToPath };
+  return { flipDocument, loadFromPath, switchToPath, listPath };
 }

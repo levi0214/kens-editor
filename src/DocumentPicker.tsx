@@ -14,6 +14,8 @@ import {
 
 interface DocumentPickerProps {
   currentPath: string | null;
+  /** Immediate highlight while a load is in flight. */
+  listPath?: string | null;
   currentText: string;
   onClose: () => void;
   onDelete: (path: string) => void;
@@ -22,6 +24,7 @@ interface DocumentPickerProps {
 
 export function DocumentPicker({
   currentPath,
+  listPath = null,
   currentText,
   onClose,
   onDelete,
@@ -33,6 +36,7 @@ export function DocumentPicker({
   const listRef = useRef<HTMLDivElement>(null);
   const selectedItemRef = useRef<HTMLDivElement | null>(null);
   const confirmDeleteRef = useRef<HTMLButtonElement>(null);
+  const highlightPath = listPath ?? currentPath;
 
   useEffect(() => {
     let active = true;
@@ -105,10 +109,10 @@ export function DocumentPicker({
         !event.altKey &&
         !event.ctrlKey &&
         event.key === "Backspace" &&
-        currentPath
+        highlightPath
       ) {
         event.preventDefault();
-        setConfirmDeletePath(currentPath);
+        setConfirmDeletePath(highlightPath);
         return;
       }
 
@@ -118,7 +122,7 @@ export function DocumentPicker({
       }
 
       event.preventDefault();
-      const nextPath = adjacentDocumentPath(documents, currentPath, step);
+      const nextPath = adjacentDocumentPath(documents, highlightPath, step);
       if (nextPath) {
         onSwitch(nextPath);
       }
@@ -126,7 +130,7 @@ export function DocumentPicker({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [confirmDeletePath, currentPath, documents, onClose, onSwitch, performDelete]);
+  }, [confirmDeletePath, documents, highlightPath, onClose, onSwitch, performDelete]);
 
   useEffect(() => {
     if (loading || documents.length === 0) {
@@ -134,7 +138,7 @@ export function DocumentPicker({
     }
 
     selectedItemRef.current?.scrollIntoView({ block: "nearest" });
-  }, [currentPath, documents, loading]);
+  }, [highlightPath, documents, loading]);
 
   useEffect(() => {
     listRef.current?.focus();
@@ -187,7 +191,7 @@ export function DocumentPicker({
             <div className="picker-empty">No documents yet</div>
           ) : (
             documents.map((document) => {
-              const selected = document.path === currentPath;
+              const selected = document.path === highlightPath;
               const confirming = document.path === confirmDeletePath;
               const preview =
                 document.path === currentPath
