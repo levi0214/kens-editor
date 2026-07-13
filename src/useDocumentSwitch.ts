@@ -78,13 +78,15 @@ export function useDocumentSwitch({
   );
 
   const flipDocument = useCallback(
-    async (direction: 1 | -1) => {
+    async (direction: 1 | -1): Promise<boolean> => {
       const documents = await listVaultDocuments();
       const from = listPathRef.current ?? pathRef.current;
       const nextPath = adjacentDocumentPath(documents, from, direction);
-      if (nextPath) {
-        switchToPath(nextPath);
+      if (!nextPath) {
+        return false;
       }
+      switchToPath(nextPath);
+      return true;
     },
     [switchToPath],
   );

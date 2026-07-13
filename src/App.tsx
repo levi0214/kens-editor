@@ -114,7 +114,7 @@ function App() {
   const [activeHint, setActiveHint] = useState<string | null>(null);
   const { flush, markLoaded, saveError } = useAutoSave(text, path);
   useFlushOnClose(flush);
-  const chromeVisible = useChromeIdle(
+  const { visible: chromeVisible, bump: bumpChrome } = useChromeIdle(
     !pickerOpen && !saveError && !showWelcome,
     chromeHovered,
   );
@@ -592,7 +592,11 @@ function App() {
         ready
       ) {
         event.preventDefault();
-        void flipDocument(direction);
+        void flipDocument(direction).then((flipped) => {
+          if (flipped) {
+            bumpChrome();
+          }
+        });
         return;
       }
 
@@ -647,6 +651,7 @@ function App() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
+    bumpChrome,
     decreaseFontSize,
     flipDocument,
     flush,

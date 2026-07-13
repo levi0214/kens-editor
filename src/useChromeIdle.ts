@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const CHROME_IDLE_MS = 800;
 
-export function useChromeIdle(active: boolean, pinned = false): boolean {
+export function useChromeIdle(
+  active: boolean,
+  pinned = false,
+): { visible: boolean; bump: () => void } {
   const [visible, setVisible] = useState(true);
   const timerRef = useRef<number | undefined>(undefined);
 
@@ -56,5 +59,5 @@ export function useChromeIdle(active: boolean, pinned = false): boolean {
     }
   }, [pinned, active, bump]);
 
-  return visible;
+  return { visible, bump };
 }
