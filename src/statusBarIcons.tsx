@@ -120,10 +120,12 @@ export function FinderIcon(props: IconProps) {
 
 export function TrashIcon(props: IconProps) {
   return (
-    <Icon {...props}>
-      <path d="M3.5 4.5h9" />
-      <path d="M5.5 4.5V3.5h5v1" />
-      <path d="M5 4.5v6.5h6V4.5" />
+    <Icon viewBox="0 0 24 24" strokeWidth="2" strokeLinejoin="round" {...props}>
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+      <path d="M3 6h18" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
     </Icon>
   );
 }
