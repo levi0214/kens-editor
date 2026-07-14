@@ -631,6 +631,13 @@ body,
   gap: 4px;
 }
 
+.picker-item-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+}
+
 .picker-item-cancel,
 .picker-item-confirm-delete,
 .picker-item-delete,

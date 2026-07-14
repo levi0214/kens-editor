@@ -252,7 +252,16 @@ export function DocumentPicker({
                         </button>
                       </>
                     ) : (
-                      <>
+                      <div className="picker-item-actions">
+                        <button
+                          type="button"
+                          className="picker-item-delete"
+                          title="Delete"
+                          aria-label="Delete document"
+                          onClick={() => setConfirmDeletePath(document.path)}
+                        >
+                          <TrashIcon className="picker-item-icon" />
+                        </button>
                         <button
                           type="button"
                           className={`picker-item-pin${document.pinned ? " picker-item-pin-active" : ""}`}
@@ -269,16 +278,7 @@ export function DocumentPicker({
                             <PinIcon className="picker-item-icon" />
                           )}
                         </button>
-                        <button
-                          type="button"
-                          className="picker-item-delete"
-                          title="Delete"
-                          aria-label="Delete document"
-                          onClick={() => setConfirmDeletePath(document.path)}
-                        >
-                          <TrashIcon className="picker-item-icon" />
-                        </button>
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>
