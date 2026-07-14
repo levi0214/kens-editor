@@ -738,7 +738,7 @@ function App() {
               const editor = event.currentTarget;
               const start = editor.selectionStart;
               const end = editor.selectionEnd;
-              editor.setRangeText("\t", start, end, "end");
+              editor.setRangeText("  ", start, end, "end");
               const next = editor.value;
               setText(next);
               if (next.length > 0 && path) {
