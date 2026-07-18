@@ -64,6 +64,7 @@ import { completeOnboarding, initialOnboardingStatus, resolveOnboardingStatus } 
 import { WelcomeScreen } from "./WelcomeScreen";
 import { UnmarkdownConfirm } from "./UnmarkdownConfirm";
 import { useUnmarkdown } from "./useUnmarkdown";
+import { indentSelectedLines, outdentSelectedLines } from "./indent";
 import "./App.css";
 
 const NEW_DOC_PULSE_MS = 180;
@@ -732,13 +733,42 @@ function App() {
                 return;
               }
               event.preventDefault();
-              if (event.shiftKey) {
-                return;
-              }
               const editor = event.currentTarget;
               const start = editor.selectionStart;
               const end = editor.selectionEnd;
-              editor.setRangeText("  ", start, end, "end");
+              const direction = editor.selectionDirection;
+
+              if (event.shiftKey) {
+                const edit = outdentSelectedLines(editor.value, start, end);
+                if (edit === null) {
+                  return;
+                }
+                editor.setRangeText(
+                  edit.replacement,
+                  edit.rangeStart,
+                  edit.rangeEnd,
+                );
+                editor.setSelectionRange(
+                  edit.selectionStart,
+                  edit.selectionEnd,
+                  direction,
+                );
+              } else if (editor.value.slice(start, end).includes("\n")) {
+                const edit = indentSelectedLines(editor.value, start, end);
+                editor.setRangeText(
+                  edit.replacement,
+                  edit.rangeStart,
+                  edit.rangeEnd,
+                );
+                editor.setSelectionRange(
+                  edit.selectionStart,
+                  edit.selectionEnd,
+                  direction,
+                );
+              } else {
+                editor.setRangeText("  ", start, end, "end");
+              }
+
               const next = editor.value;
               setText(next);
               if (next.length > 0 && path) {
