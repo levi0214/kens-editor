@@ -1,34 +1,22 @@
-const PREVIEW_MAX_CHARS = 80;
+const PREVIEW_MAX_CHARS = 360;
 
-function collapseWhitespace(text: string): string {
-  let result = "";
-  let lastWasSpace = false;
-
-  for (const ch of text) {
-    if (/\s/.test(ch)) {
-      if (result.length > 0 && !lastWasSpace) {
-        result += " ";
-        lastWasSpace = true;
-      }
-    } else {
-      result += ch;
-      lastWasSpace = false;
-    }
-  }
-
-  return result.trimEnd();
+function cleanPreview(text: string): string {
+  return text
+    .replace(/\r\n?/g, "\n")
+    .replace(/^(?:[ \t]*\n)+/, "")
+    .trimEnd();
 }
 
 export function previewFromText(text: string): string {
-  const collapsed = collapseWhitespace(text);
+  const preview = cleanPreview(text);
 
-  if (collapsed.length === 0) {
+  if (preview.length === 0) {
     return "(empty)";
   }
 
-  const chars = [...collapsed];
+  const chars = [...preview];
   if (chars.length <= PREVIEW_MAX_CHARS) {
-    return collapsed;
+    return preview;
   }
 
   return `${chars.slice(0, PREVIEW_MAX_CHARS).join("")}…`;

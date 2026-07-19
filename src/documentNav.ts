@@ -15,13 +15,13 @@ export function documentIndex(
 export function adjacentDocumentPath(
   documents: VaultDocument[],
   path: string | null,
-  direction: 1 | -1,
+  step: number,
 ): string | null {
   if (documents.length === 0) {
     return null;
   }
 
-  const nextIndex = documentIndex(documents, path) + direction;
+  const nextIndex = documentIndex(documents, path) + step;
   if (nextIndex < 0 || nextIndex >= documents.length) {
     return null;
   }
@@ -40,23 +40,27 @@ function jkStep(key: string): 1 | -1 | null {
   }
 }
 
-function arrowStep(key: string): 1 | -1 | null {
+function arrowStep(key: string, columns: number): number | null {
   switch (key.toLowerCase()) {
-    case "arrowdown":
-      return 1;
-    case "arrowup":
+    case "arrowleft":
       return -1;
+    case "arrowright":
+      return 1;
+    case "arrowdown":
+      return columns;
+    case "arrowup":
+      return -columns;
     default:
       return null;
   }
 }
 
-export function pickerMoveStep(event: KeyboardEvent): -1 | 0 | 1 {
+export function pickerMoveStep(event: KeyboardEvent, columns = 1): number {
   if (event.altKey || event.ctrlKey) {
     return 0;
   }
 
-  return jkStep(event.key) ?? arrowStep(event.key) ?? 0;
+  return jkStep(event.key) ?? arrowStep(event.key, columns) ?? 0;
 }
 
 export function flipDirection(event: KeyboardEvent): 1 | -1 | null {

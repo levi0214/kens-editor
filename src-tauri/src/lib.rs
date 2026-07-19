@@ -7,8 +7,8 @@ use std::time::UNIX_EPOCH;
 
 const VAULT_DIR_NAME: &str = "KensEditor";
 const PINS_FILE_NAME: &str = ".pins.json";
-const PREVIEW_MAX_CHARS: usize = 80;
-const PREVIEW_READ_BYTES: usize = 256;
+const PREVIEW_MAX_CHARS: usize = 360;
+const PREVIEW_READ_BYTES: usize = PREVIEW_MAX_CHARS * 4;
 
 fn vault_dir() -> Result<PathBuf, String> {
     let home = dirs::home_dir().ok_or_else(|| "Could not find home directory".to_string())?;
@@ -73,38 +73,37 @@ fn created_ms(path: &Path, name: &str) -> Result<u64, String> {
     modified_ms(path)
 }
 
-fn collapse_whitespace(text: &str) -> String {
-    let mut result = String::new();
-    let mut last_was_space = false;
+fn clean_preview(text: &str) -> String {
+    let normalized = text.replace("\r\n", "\n").replace('\r', "\n");
+    let mut preview = normalized.as_str();
 
-    for ch in text.chars() {
-        if ch.is_whitespace() {
-            if !result.is_empty() && !last_was_space {
-                result.push(' ');
-                last_was_space = true;
-            }
+    while let Some(line_end) = preview.find('\n') {
+        if preview[..line_end]
+            .chars()
+            .all(|ch| ch == ' ' || ch == '\t')
+        {
+            preview = &preview[line_end + 1..];
         } else {
-            result.push(ch);
-            last_was_space = false;
+            break;
         }
     }
 
-    result.trim_end().to_string()
+    preview.trim_end().to_string()
 }
 
 fn preview_from_text(text: &str) -> String {
-    let collapsed = collapse_whitespace(text);
+    let preview = clean_preview(text);
 
-    if collapsed.is_empty() {
+    if preview.is_empty() {
         return "(empty)".to_string();
     }
 
-    let char_count = collapsed.chars().count();
+    let char_count = preview.chars().count();
     if char_count <= PREVIEW_MAX_CHARS {
-        return collapsed;
+        return preview;
     }
 
-    let truncated: String = collapsed.chars().take(PREVIEW_MAX_CHARS).collect();
+    let truncated: String = preview.chars().take(PREVIEW_MAX_CHARS).collect();
     format!("{truncated}…")
 }
 

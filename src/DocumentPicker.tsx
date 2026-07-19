@@ -2,7 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { adjacentDocumentPath, pickerMoveStep } from "./documentNav";
 import { KeyHints } from "./keyHint";
 import { previewFromText } from "./preview";
-import { CheckIcon, CloseIcon, FinderIcon, PinFilledIcon, PinIcon, TrashIcon } from "./statusBarIcons";
+import {
+  CheckIcon,
+  CloseIcon,
+  FinderIcon,
+  PinFilledIcon,
+  PinIcon,
+  TrashIcon,
+} from "./statusBarIcons";
 import { shortDate } from "./shortDate";
 import {
   deleteVaultDocument,
@@ -20,6 +27,14 @@ interface DocumentPickerProps {
   onClose: () => void;
   onDelete: (path: string) => void;
   onSwitch: (path: string) => void;
+}
+
+function pickerColumnCount(list: HTMLDivElement | null): number {
+  if (!list) {
+    return 1;
+  }
+
+  return Number.parseInt(getComputedStyle(list).getPropertyValue("--picker-columns"), 10) || 1;
 }
 
 export function DocumentPicker({
@@ -116,7 +131,7 @@ export function DocumentPicker({
         return;
       }
 
-      const step = pickerMoveStep(event);
+      const step = pickerMoveStep(event, pickerColumnCount(listRef.current));
       if (step === 0) {
         return;
       }
@@ -169,7 +184,7 @@ export function DocumentPicker({
         <div className="picker-header">
           <span className="picker-title">Documents</span>
           <span className="picker-hint">
-            <KeyHints keys={["↑", "↓", "⌘", "⌫", "↵", "Esc"]} />
+            <KeyHints keys={["←", "↑", "↓", "→", "⌘", "⌫", "↵", "Esc"]} />
           </span>
           <button
             type="button"
