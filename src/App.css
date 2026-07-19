@@ -815,8 +815,10 @@ body,
 
   .picker-item {
     flex-direction: row;
+    flex-shrink: 0;
     align-items: center;
     gap: 8px;
+    min-height: 36px;
     padding-right: 6px;
     border: none;
     border-radius: 8px;
@@ -872,9 +874,6 @@ body,
     mask-image: none;
   }
 
-  .picker-item-time {
-    font-size: inherit;
-  }
 }
 
 .unmarkdown-confirm-backdrop {
