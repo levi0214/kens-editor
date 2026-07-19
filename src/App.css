@@ -531,8 +531,29 @@ body,
   border-bottom: 1px solid rgb(127 127 127 / 18%);
 }
 
-.picker-title {
+.picker-search {
+  flex: 0 1 22ch;
+  min-width: 9ch;
+  padding: 0;
+  border: none;
+  outline: none;
+  font: inherit;
   line-height: 1;
+  color: inherit;
+  background: none;
+}
+
+.picker-search::placeholder {
+  color: inherit;
+  opacity: 1;
+}
+
+.picker-panel-searching .picker-hint {
+  display: none;
+}
+
+.picker-panel-searching .picker-search {
+  flex: 1;
 }
 
 .picker-hint {
@@ -802,6 +823,14 @@ body,
   .picker-panel {
     width: min(420px, 100%);
     max-height: min(420px, 70vh);
+  }
+
+  .picker-search {
+    flex: 1;
+  }
+
+  .picker-hint {
+    display: none;
   }
 
   .picker-list {

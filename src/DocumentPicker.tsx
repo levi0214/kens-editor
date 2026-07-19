@@ -15,6 +15,7 @@ import {
   deleteVaultDocument,
   listVaultDocuments,
   revealVaultInFinder,
+  searchVaultDocuments,
   toggleVaultDocumentPin,
   type VaultDocument,
 } from "./vault";
@@ -47,32 +48,58 @@ export function DocumentPicker({
 }: DocumentPickerProps) {
   const [documents, setDocuments] = useState<VaultDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [resultsQuery, setResultsQuery] = useState("");
+  const [searchPath, setSearchPath] = useState<string | null>(null);
+  const [reloadSequence, setReloadSequence] = useState(0);
   const [confirmDeletePath, setConfirmDeletePath] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const selectedItemRef = useRef<HTMLDivElement | null>(null);
   const confirmDeleteRef = useRef<HTMLButtonElement>(null);
-  const highlightPath = listPath ?? currentPath;
+  const searchActive = query.length > 0;
+  const searchReady = !searchActive || resultsQuery === query;
+  const searchSelection =
+    searchReady && searchPath && documents.some((document) => document.path === searchPath)
+      ? searchPath
+      : searchReady
+        ? documents[0]?.path ?? null
+        : null;
+  const highlightPath = searchActive ? searchSelection : listPath ?? currentPath;
 
   useEffect(() => {
     let active = true;
+    const requestQuery = query;
+    const timer = window.setTimeout(
+      () => {
+        const request = requestQuery
+          ? searchVaultDocuments(requestQuery, currentPath, currentText)
+          : listVaultDocuments();
 
-    void listVaultDocuments()
-      .then((items) => {
-        if (active) {
-          setDocuments(items);
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setLoading(false);
-        }
-      });
+        void request
+          .then((items) => {
+            if (active) {
+              setDocuments(items);
+              setResultsQuery(requestQuery);
+              setLoading(false);
+            }
+          })
+          .catch(() => {
+            if (active) {
+              setDocuments([]);
+              setResultsQuery(requestQuery);
+              setLoading(false);
+            }
+          });
+      },
+      requestQuery ? 50 : 0,
+    );
 
     return () => {
       active = false;
+      window.clearTimeout(timer);
     };
-  }, []);
+  }, [query, reloadSequence]);
 
   const performDelete = useCallback(
     async (targetPath: string) => {
@@ -86,12 +113,16 @@ export function DocumentPicker({
 
   const togglePin = useCallback(async (targetPath: string) => {
     await toggleVaultDocumentPin(targetPath);
-    const items = await listVaultDocuments();
-    setDocuments(items);
+    setReloadSequence((current) => current + 1);
+    searchInputRef.current?.focus();
   }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.isComposing || event.keyCode === 229) {
+        return;
+      }
+
       if (event.key === "Enter" && confirmDeletePath) {
         event.preventDefault();
         void performDelete(confirmDeletePath);
@@ -102,9 +133,26 @@ export function DocumentPicker({
         event.preventDefault();
         if (confirmDeletePath) {
           setConfirmDeletePath(null);
+        } else if (searchActive) {
+          setQuery("");
+          setSearchPath(null);
         } else {
           onClose();
         }
+        return;
+      }
+
+      if (
+        event.metaKey &&
+        !event.shiftKey &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        event.key === "Backspace" &&
+        searchActive
+      ) {
+        event.preventDefault();
+        setQuery("");
+        setSearchPath(null);
         return;
       }
 
@@ -114,7 +162,14 @@ export function DocumentPicker({
 
       if (event.key === "Enter") {
         event.preventDefault();
-        onClose();
+        if (searchActive) {
+          if (searchReady && highlightPath) {
+            onSwitch(highlightPath);
+            onClose();
+          }
+        } else {
+          onClose();
+        }
         return;
       }
 
@@ -131,7 +186,33 @@ export function DocumentPicker({
         return;
       }
 
-      const step = pickerMoveStep(event, pickerColumnCount(listRef.current));
+      const fromSearchInput = event.target === searchInputRef.current;
+
+      if (fromSearchInput && (event.metaKey || event.altKey || event.ctrlKey)) {
+        return;
+      }
+
+      if (
+        fromSearchInput &&
+        (event.key.toLowerCase() === "j" || event.key.toLowerCase() === "k")
+      ) {
+        return;
+      }
+
+      if (
+        searchActive &&
+        fromSearchInput &&
+        (event.key === "ArrowLeft" || event.key === "ArrowRight")
+      ) {
+        return;
+      }
+
+      if (!searchReady) {
+        return;
+      }
+
+      const columns = searchActive ? 1 : pickerColumnCount(listRef.current);
+      const step = pickerMoveStep(event, columns);
       if (step === 0) {
         return;
       }
@@ -139,13 +220,26 @@ export function DocumentPicker({
       event.preventDefault();
       const nextPath = adjacentDocumentPath(documents, highlightPath, step);
       if (nextPath) {
-        onSwitch(nextPath);
+        if (searchActive) {
+          setSearchPath(nextPath);
+        } else {
+          onSwitch(nextPath);
+        }
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [confirmDeletePath, documents, highlightPath, onClose, onSwitch, performDelete]);
+  }, [
+    confirmDeletePath,
+    documents,
+    highlightPath,
+    onClose,
+    onSwitch,
+    performDelete,
+    searchActive,
+    searchReady,
+  ]);
 
   useEffect(() => {
     if (loading || documents.length === 0) {
@@ -156,12 +250,14 @@ export function DocumentPicker({
   }, [highlightPath, documents, loading]);
 
   useEffect(() => {
-    listRef.current?.focus();
-  }, [loading]);
+    searchInputRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (confirmDeletePath) {
       confirmDeleteRef.current?.focus();
+    } else {
+      searchInputRef.current?.focus();
     }
   }, [confirmDeletePath]);
 
@@ -176,13 +272,26 @@ export function DocumentPicker({
   return (
     <div className="picker-backdrop" onMouseDown={onClose}>
       <div
-        className="picker-panel"
+        className={`picker-panel${searchActive ? " picker-panel-searching" : ""}`}
         role="dialog"
         aria-label="Documents"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="picker-header">
-          <span className="picker-title">Documents</span>
+          <input
+            ref={searchInputRef}
+            className="picker-search"
+            type="text"
+            value={query}
+            placeholder="Documents"
+            aria-label="Search documents"
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(event) => {
+              setQuery(event.currentTarget.value);
+              setSearchPath(null);
+            }}
+          />
           <span className="picker-hint">
             <KeyHints keys={["←", "↑", "↓", "→", "⌘", "⌫", "↵", "Esc"]} />
           </span>
@@ -203,7 +312,9 @@ export function DocumentPicker({
           {loading ? (
             <div className="picker-empty">Loading…</div>
           ) : documents.length === 0 ? (
-            <div className="picker-empty">No documents yet</div>
+            <div className="picker-empty">
+              {searchActive ? "No documents found" : "No documents yet"}
+            </div>
           ) : (
             documents.map((document) => {
               const selected = document.path === highlightPath;

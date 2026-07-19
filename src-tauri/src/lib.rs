@@ -198,6 +198,37 @@ fn list_vault_documents() -> Result<Vec<VaultDocument>, String> {
     read_vault_documents(&dir)
 }
 
+#[tauri::command]
+fn search_vault_documents(
+    query: String,
+    current_path: Option<String>,
+    current_text: String,
+) -> Result<Vec<VaultDocument>, String> {
+    let dir = ensure_vault_exists()?;
+    let documents = read_vault_documents(&dir)?;
+    let query = query.to_lowercase();
+
+    if query.is_empty() {
+        return Ok(documents);
+    }
+
+    documents
+        .into_iter()
+        .filter_map(|document| {
+            let text = if current_path.as_deref() == Some(document.path.as_str()) {
+                current_text.clone()
+            } else {
+                match fs::read(&document.path) {
+                    Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
+                    Err(error) => return Some(Err(error.to_string())),
+                }
+            };
+
+            text.to_lowercase().contains(&query).then_some(Ok(document))
+        })
+        .collect()
+}
+
 fn read_vault_documents(dir: &Path) -> Result<Vec<VaultDocument>, String> {
     let pins = read_pins(dir)?;
     let mut documents = Vec::new();
@@ -345,6 +376,7 @@ pub fn run() {
             read_text_file,
             write_text_file,
             list_vault_documents,
+            search_vault_documents,
             most_recent_vault_document,
             peek_most_recent_vault_document,
             create_vault_document,

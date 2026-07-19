@@ -12,6 +12,18 @@ export async function listVaultDocuments(): Promise<VaultDocument[]> {
   return invoke<VaultDocument[]>("list_vault_documents");
 }
 
+export async function searchVaultDocuments(
+  query: string,
+  currentPath: string | null,
+  currentText: string,
+): Promise<VaultDocument[]> {
+  return invoke<VaultDocument[]>("search_vault_documents", {
+    query,
+    currentPath,
+    currentText,
+  });
+}
+
 export async function mostRecentVaultDocument(): Promise<string | null> {
   return invoke<string | null>("most_recent_vault_document");
 }
