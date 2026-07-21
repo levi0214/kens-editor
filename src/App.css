@@ -1048,7 +1048,7 @@ body,
 .image-tray-item {
   position: relative;
   min-width: 0;
-  border: 1px solid rgb(127 127 127 / 18%);
+  border: 2px solid rgb(127 127 127 / 14%);
   border-radius: 7px;
   background: var(--editor-bg);
   overflow: hidden;
@@ -1060,7 +1060,6 @@ body,
 
 .image-tray-item-selected {
   border-color: var(--editor-fg);
-  box-shadow: inset 0 0 0 1px var(--editor-fg);
 }
 
 .image-tray-open {
@@ -1078,7 +1077,7 @@ body,
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .image-tray-open:focus-visible {
