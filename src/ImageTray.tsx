@@ -2,6 +2,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { pickerMoveStep } from "./documentNav";
 import {
   addDocumentImageFiles,
   addDocumentImages,
@@ -24,7 +25,7 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function navigationStep(key: string): -1 | 1 | 0 {
+function previewNavigationStep(key: string): -1 | 1 | 0 {
   switch (key.toLowerCase()) {
     case "arrowleft":
     case "k":
@@ -35,6 +36,15 @@ function navigationStep(key: string): -1 | 1 | 0 {
     default:
       return 0;
   }
+}
+
+function gridColumnCount(grid: HTMLDivElement | null): number {
+  if (!grid) {
+    return 1;
+  }
+
+  const columns = getComputedStyle(grid).gridTemplateColumns;
+  return columns === "none" ? 1 : columns.split(" ").length;
 }
 
 export function ImageTray({
@@ -213,7 +223,7 @@ export function ImageTray({
   );
 
   const moveSelection = useCallback(
-    (step: -1 | 1) => {
+    (step: number) => {
       if (images.length === 0) {
         return;
       }
@@ -270,15 +280,20 @@ export function ImageTray({
         !event.altKey &&
         !event.ctrlKey &&
         !event.shiftKey;
-      const step = plainKey ? navigationStep(event.key) : 0;
+      const previewStep = plainKey ? previewNavigationStep(event.key) : 0;
 
       if (previewOpen) {
         if (plainKey && event.key === " ") {
           event.preventDefault();
           setPreviewOpen(false);
-        } else if (step !== 0) {
+        } else if (previewStep !== 0) {
           event.preventDefault();
-          moveSelection(step);
+          moveSelection(previewStep);
+        } else if (
+          plainKey &&
+          (event.key === "ArrowUp" || event.key === "ArrowDown")
+        ) {
+          event.preventDefault();
         }
         return;
       }
@@ -293,6 +308,10 @@ export function ImageTray({
         return;
       }
 
+      const gridStep = plainKey
+        ? pickerMoveStep(event, gridColumnCount(gridRef.current))
+        : 0;
+
       if (
         event.metaKey &&
         !event.shiftKey &&
@@ -303,9 +322,9 @@ export function ImageTray({
       ) {
         event.preventDefault();
         void removeImage(selectedImage.path);
-      } else if (step !== 0) {
+      } else if (gridStep !== 0) {
         event.preventDefault();
-        moveSelection(step);
+        moveSelection(gridStep);
       } else if (plainKey && (event.key === "Enter" || event.key === " ")) {
         event.preventDefault();
         if (selectedImage) {
