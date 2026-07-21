@@ -11,13 +11,7 @@ import {
   revealDocumentImages,
   type DocumentImage,
 } from "./images";
-import {
-  CheckIcon,
-  CloseIcon,
-  FinderIcon,
-  PlusIcon,
-  TrashIcon,
-} from "./statusBarIcons";
+import { FinderIcon, PlusIcon, TrashIcon } from "./statusBarIcons";
 
 interface ImageTrayProps {
   documentPath: string;
@@ -57,7 +51,6 @@ export function ImageTray({
   const [adding, setAdding] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmDeletePath, setConfirmDeletePath] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<DocumentImage | null>(null);
   const addingRef = useRef(false);
 
@@ -218,7 +211,6 @@ export function ImageTray({
         await deleteDocumentImage(documentPath, imagePath);
         replaceImages(images.filter((image) => image.path !== imagePath));
         setPreviewImage((image) => (image?.path === imagePath ? null : image));
-        setConfirmDeletePath(null);
       } catch (deleteError) {
         setError(errorText(deleteError));
       }
@@ -234,15 +226,13 @@ export function ImageTray({
       event.preventDefault();
       if (previewImage) {
         setPreviewImage(null);
-      } else if (confirmDeletePath) {
-        setConfirmDeletePath(null);
       } else {
         onClose();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [confirmDeletePath, onClose, previewImage]);
+  }, [onClose, previewImage]);
 
   return (
     <div className="image-tray-backdrop" onMouseDown={onClose}>
@@ -295,63 +285,35 @@ export function ImageTray({
               </button>
             </div>
           ) : (
-            images.map((image) => {
-              const confirming = confirmDeletePath === image.path;
-              return (
-                <article
-                  key={image.path}
-                  className={`image-tray-item${confirming ? " image-tray-item-confirm" : ""}`}
+            images.map((image) => (
+              <article key={image.path} className="image-tray-item">
+                <button
+                  type="button"
+                  className="image-tray-open"
+                  title={displayName(image.name)}
+                  onClick={() => setPreviewImage(image)}
                 >
+                  <img
+                    src={convertFileSrc(image.path)}
+                    alt={displayName(image.name)}
+                  />
+                </button>
+                <footer className="image-tray-item-footer">
+                  <span className="image-tray-name">
+                    {displayName(image.name)}
+                  </span>
                   <button
                     type="button"
-                    className="image-tray-open"
-                    title={displayName(image.name)}
-                    onClick={() => {
-                      if (!confirming) {
-                        setPreviewImage(image);
-                      }
-                    }}
+                    className="image-tray-delete"
+                    title="Remove"
+                    aria-label={`Remove ${displayName(image.name)}`}
+                    onClick={() => void removeImage(image.path)}
                   >
-                    <img src={convertFileSrc(image.path)} alt={displayName(image.name)} />
+                    <TrashIcon />
                   </button>
-                  <footer className="image-tray-item-footer">
-                    <span className="image-tray-name">{displayName(image.name)}</span>
-                    {confirming ? (
-                      <span className="image-tray-delete-actions">
-                        <button
-                          type="button"
-                          className="image-tray-cancel-delete"
-                          title="Cancel"
-                          aria-label="Cancel"
-                          onClick={() => setConfirmDeletePath(null)}
-                        >
-                          <CloseIcon />
-                        </button>
-                        <button
-                          type="button"
-                          className="image-tray-confirm-delete"
-                          title="Remove"
-                          aria-label="Remove image"
-                          onClick={() => void removeImage(image.path)}
-                        >
-                          <CheckIcon />
-                        </button>
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        className="image-tray-delete"
-                        title="Remove"
-                        aria-label={`Remove ${displayName(image.name)}`}
-                        onClick={() => setConfirmDeletePath(image.path)}
-                      >
-                        <TrashIcon />
-                      </button>
-                    )}
-                  </footer>
-                </article>
-              );
-            })
+                </footer>
+              </article>
+            ))
           )}
         </div>
 
