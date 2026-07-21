@@ -112,8 +112,8 @@ export function PlusIcon(props: IconProps) {
 
 export function FinderIcon(props: IconProps) {
   return (
-    <Icon {...props}>
-      <path d="M3 5.5h3l1.5 1.5h6v5H3z" />
+    <Icon strokeLinejoin="round" {...props}>
+      <path d="M3 5h3.2l1.5 1.5H13a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
     </Icon>
   );
 }
