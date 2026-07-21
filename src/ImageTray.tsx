@@ -41,6 +41,19 @@ function clipboardExtension(file: File): string | null {
   );
 }
 
+function navigationStep(key: string): -1 | 1 | 0 {
+  switch (key.toLowerCase()) {
+    case "arrowleft":
+    case "k":
+      return -1;
+    case "arrowright":
+    case "j":
+      return 1;
+    default:
+      return 0;
+  }
+}
+
 export function ImageTray({
   documentPath,
   onClose,
@@ -51,12 +64,25 @@ export function ImageTray({
   const [adding, setAdding] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [previewImage, setPreviewImage] = useState<DocumentImage | null>(null);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const addingRef = useRef(false);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const selectedItemRef = useRef<HTMLButtonElement | null>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const selectedIndex = selectedPath
+    ? images.findIndex((image) => image.path === selectedPath)
+    : -1;
+  const selectedImage = selectedIndex >= 0 ? images[selectedIndex] : null;
 
   const replaceImages = useCallback(
     (next: DocumentImage[]) => {
       setImages(next);
+      setSelectedPath((current) =>
+        current && next.some((image) => image.path === current)
+          ? current
+          : next[0]?.path ?? null,
+      );
       onCountChange(next.length);
     },
     [onCountChange],
@@ -209,30 +235,131 @@ export function ImageTray({
       setError(null);
       try {
         await deleteDocumentImage(documentPath, imagePath);
-        replaceImages(images.filter((image) => image.path !== imagePath));
-        setPreviewImage((image) => (image?.path === imagePath ? null : image));
+        const removedIndex = images.findIndex(
+          (image) => image.path === imagePath,
+        );
+        const next = images.filter((image) => image.path !== imagePath);
+        replaceImages(next);
+        if (selectedPath === imagePath) {
+          setSelectedPath(
+            next[Math.min(removedIndex, next.length - 1)]?.path ?? null,
+          );
+        }
+        requestAnimationFrame(() => selectedItemRef.current?.focus());
       } catch (deleteError) {
         setError(errorText(deleteError));
       }
     },
-    [documentPath, images, replaceImages],
+    [documentPath, images, replaceImages, selectedPath],
+  );
+
+  const moveSelection = useCallback(
+    (step: -1 | 1) => {
+      if (images.length === 0) {
+        return;
+      }
+
+      setSelectedPath((current) => {
+        const index = Math.max(
+          0,
+          images.findIndex((image) => image.path === current),
+        );
+        const nextIndex = index + step;
+        return nextIndex >= 0 && nextIndex < images.length
+          ? images[nextIndex].path
+          : current ?? images[0].path;
+      });
+    },
+    [images],
   );
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
+    const frame = requestAnimationFrame(() => {
+      if (previewOpen) {
+        previewRef.current?.focus();
         return;
       }
-      event.preventDefault();
-      if (previewImage) {
-        setPreviewImage(null);
-      } else {
-        onClose();
+
+      const target = selectedItemRef.current ?? gridRef.current;
+      target?.focus();
+      selectedItemRef.current?.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [loading, previewOpen, selectedPath]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.isComposing || event.keyCode === 229) {
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (previewOpen) {
+          setPreviewOpen(false);
+        } else {
+          onClose();
+        }
+        return;
+      }
+
+      const plainKey =
+        !event.metaKey &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.shiftKey;
+      const step = plainKey ? navigationStep(event.key) : 0;
+
+      if (previewOpen) {
+        if (step !== 0) {
+          event.preventDefault();
+          moveSelection(step);
+        }
+        return;
+      }
+
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest(
+          ".image-tray-action, .image-tray-delete, .image-tray-empty button",
+        )
+      ) {
+        return;
+      }
+
+      if (
+        event.metaKey &&
+        !event.shiftKey &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        event.key === "Backspace" &&
+        selectedImage
+      ) {
+        event.preventDefault();
+        void removeImage(selectedImage.path);
+      } else if (step !== 0) {
+        event.preventDefault();
+        moveSelection(step);
+      } else if (plainKey && (event.key === "Enter" || event.key === " ")) {
+        event.preventDefault();
+        if (selectedImage) {
+          setPreviewOpen(true);
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose, previewImage]);
+  }, [moveSelection, onClose, previewOpen, removeImage, selectedImage]);
+
+  useEffect(() => {
+    if (previewOpen && !selectedImage) {
+      setPreviewOpen(false);
+    }
+  }, [previewOpen, selectedImage]);
 
   return (
     <div className="image-tray-backdrop" onMouseDown={onClose}>
@@ -273,7 +400,9 @@ export function ImageTray({
         </header>
 
         <div
+          ref={gridRef}
           className={`image-tray-grid${dragging ? " image-tray-grid-dragging" : ""}`}
+          tabIndex={images.length === 0 ? 0 : -1}
         >
           {loading ? (
             <div className="image-tray-empty">Loading…</div>
@@ -285,53 +414,72 @@ export function ImageTray({
               </button>
             </div>
           ) : (
-            images.map((image) => (
-              <article key={image.path} className="image-tray-item">
-                <button
-                  type="button"
-                  className="image-tray-open"
-                  title={displayName(image.name)}
-                  onClick={() => setPreviewImage(image)}
+            images.map((image) => {
+              const selected = image.path === selectedPath;
+              return (
+                <article
+                  key={image.path}
+                  className={`image-tray-item${selected ? " image-tray-item-selected" : ""}`}
                 >
-                  <img
-                    src={convertFileSrc(image.path)}
-                    alt={displayName(image.name)}
-                  />
-                </button>
-                <footer className="image-tray-item-footer">
-                  <span className="image-tray-name">
-                    {displayName(image.name)}
-                  </span>
                   <button
+                    ref={selected ? selectedItemRef : undefined}
                     type="button"
-                    className="image-tray-delete"
-                    title="Remove"
-                    aria-label={`Remove ${displayName(image.name)}`}
-                    onClick={() => void removeImage(image.path)}
+                    className="image-tray-open"
+                    title={displayName(image.name)}
+                    aria-current={selected ? "true" : undefined}
+                    tabIndex={selected ? 0 : -1}
+                    onFocus={() => setSelectedPath(image.path)}
+                    onClick={() => {
+                      setSelectedPath(image.path);
+                      setPreviewOpen(true);
+                    }}
                   >
-                    <TrashIcon />
+                    <img
+                      src={convertFileSrc(image.path)}
+                      alt={displayName(image.name)}
+                    />
                   </button>
-                </footer>
-              </article>
-            ))
+                  <footer className="image-tray-item-footer">
+                    <span className="image-tray-name">
+                      {displayName(image.name)}
+                    </span>
+                    <button
+                      type="button"
+                      className="image-tray-delete"
+                      title="Remove"
+                      aria-label={`Remove ${displayName(image.name)}`}
+                      tabIndex={selected ? 0 : -1}
+                      onClick={() => void removeImage(image.path)}
+                    >
+                      <TrashIcon />
+                    </button>
+                  </footer>
+                </article>
+              );
+            })
           )}
         </div>
 
         {error && <div className="image-tray-error">{error}</div>}
       </div>
-      {previewImage && (
-        <button
-          type="button"
+      {previewOpen && selectedImage && (
+        <div
+          ref={previewRef}
           className="image-tray-preview"
-          aria-label="Close image preview"
+          role="dialog"
+          aria-label={`Image preview, ${selectedIndex + 1} of ${images.length}`}
+          tabIndex={-1}
           onMouseDown={(event) => event.stopPropagation()}
-          onClick={() => setPreviewImage(null)}
+          onClick={() => setPreviewOpen(false)}
         >
           <img
-            src={convertFileSrc(previewImage.path)}
-            alt={displayName(previewImage.name)}
+            src={convertFileSrc(selectedImage.path)}
+            alt={displayName(selectedImage.name)}
           />
-        </button>
+          <span className="image-tray-preview-count">
+            {selectedIndex + 1} / {images.length}
+          </span>
+        </div>
       )}
     </div>
   );

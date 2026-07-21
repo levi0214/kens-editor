@@ -1059,6 +1059,11 @@ body,
   border-color: rgb(127 127 127 / 46%);
 }
 
+.image-tray-item-selected {
+  border-color: var(--editor-fg);
+  box-shadow: inset 0 0 0 1px var(--editor-fg);
+}
+
 .image-tray-open {
   display: block;
   width: 100%;
@@ -1075,6 +1080,10 @@ body,
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+.image-tray-open:focus-visible {
+  outline: none;
 }
 
 .image-tray-item-footer {
@@ -1158,6 +1167,18 @@ body,
   max-height: 100%;
   object-fit: contain;
   filter: drop-shadow(0 8px 32px rgb(0 0 0 / 36%));
+}
+
+.image-tray-preview-count {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  font: 12px/1.3 var(--app-font);
+  color: #fff;
+  background: rgb(0 0 0 / 48%);
+  pointer-events: none;
 }
 
 @media (max-width: 559px) {
