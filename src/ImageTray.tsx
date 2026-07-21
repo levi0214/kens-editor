@@ -6,6 +6,7 @@ import {
   addDocumentImageBytes,
   addDocumentImages,
   deleteDocumentImage,
+  isImagePath,
   listDocumentImages,
   revealDocumentImages,
   type DocumentImage,
@@ -30,10 +31,6 @@ function displayName(name: string): string {
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function isImagePath(path: string): boolean {
-  return /\.(png|jpe?g|gif|webp)$/i.test(path);
 }
 
 function clipboardExtension(file: File): string | null {

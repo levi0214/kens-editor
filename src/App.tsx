@@ -18,7 +18,11 @@ import {
   WrapOffIcon,
   WrapOnIcon,
 } from "./statusBarIcons";
-import { listDocumentImages } from "./images";
+import {
+  addDocumentImages,
+  isImagePath,
+  listDocumentImages,
+} from "./images";
 import {
   applyFontSize,
   DEFAULT_FONT_SIZE,
@@ -72,6 +76,7 @@ import "./App.css";
 
 const NEW_DOC_PULSE_MS = 180;
 const HINT_DELAY_MS = 250;
+const IMAGE_FEEDBACK_MS = 1400;
 
 function focusEditor(editor: HTMLTextAreaElement | null): void {
   void getCurrentWindow().setFocus();
@@ -94,12 +99,14 @@ function App() {
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const pulseTimerRef = useRef<number | undefined>(undefined);
   const hintTimerRef = useRef<number | undefined>(undefined);
+  const imageFeedbackTimerRef = useRef<number | undefined>(undefined);
   const menuActionsRef = useRef({
     newDocument: () => {},
     openFile: () => {},
     saveFile: () => {},
     saveFileAs: () => {},
     togglePicker: () => {},
+    toggleImages: () => {},
     unmarkdown: () => {},
   });
   const [text, setText] = useState("");
@@ -112,6 +119,8 @@ function App() {
   const [imageTrayOpen, setImageTrayOpen] = useState(false);
   const [imagesSupported, setImagesSupported] = useState(false);
   const [imageCount, setImageCount] = useState(0);
+  const [imageDragging, setImageDragging] = useState(false);
+  const [imageDropFeedback, setImageDropFeedback] = useState<string | null>(null);
   const [newDocPulse, setNewDocPulse] = useState(false);
   const [fontSize, setFontSize] = useState<FontSize>(storedFontSize);
   const [wrap, setWrap] = useState<WrapMode>(storedWrap);
@@ -264,8 +273,26 @@ function App() {
       if (hintTimerRef.current !== undefined) {
         window.clearTimeout(hintTimerRef.current);
       }
+      if (imageFeedbackTimerRef.current !== undefined) {
+        window.clearTimeout(imageFeedbackTimerRef.current);
+      }
     };
   }, []);
+
+  const showImageDropFeedback = useCallback(
+    (message: string) => {
+      if (imageFeedbackTimerRef.current !== undefined) {
+        window.clearTimeout(imageFeedbackTimerRef.current);
+      }
+      setImageDropFeedback(message);
+      bumpChrome();
+      imageFeedbackTimerRef.current = window.setTimeout(() => {
+        setImageDropFeedback(null);
+        imageFeedbackTimerRef.current = undefined;
+      }, IMAGE_FEEDBACK_MS);
+    },
+    [bumpChrome],
+  );
 
   const openPicker = useCallback(() => {
     hideHint();
@@ -273,11 +300,20 @@ function App() {
     setPickerOpen(true);
   }, [hideHint]);
 
-  const openImageTray = useCallback(() => {
+  const toggleImageTray = useCallback(() => {
+    if (!imagesSupported) {
+      return;
+    }
+
     hideHint();
     setPickerOpen(false);
-    setImageTrayOpen(true);
-  }, [hideHint]);
+    setImageTrayOpen((open) => {
+      if (open) {
+        focusEditor(editorRef.current);
+      }
+      return !open;
+    });
+  }, [hideHint, imagesSupported]);
 
   const handleImageCountChange = useCallback(
     (count: number) => {
@@ -446,11 +482,44 @@ function App() {
 
     void getCurrentWindow()
       .onDragDropEvent((event) => {
+        if (imageTrayOpen) {
+          setImageDragging(false);
+          return;
+        }
+
+        if (event.payload.type === "enter") {
+          setImageDragging(
+            imagesSupported && event.payload.paths.some(isImagePath),
+          );
+          return;
+        }
+        if (event.payload.type === "leave") {
+          setImageDragging(false);
+          return;
+        }
         if (event.payload.type !== "drop") {
           return;
         }
 
-        if (imageTrayOpen) {
+        setImageDragging(false);
+        const imagePaths = event.payload.paths.filter(isImagePath);
+        if (imagePaths.length > 0) {
+          if (!imagesSupported || !path) {
+            showImageDropFeedback("Images unavailable for this file");
+            return;
+          }
+
+          void addDocumentImages(path, imagePaths)
+            .then((images) => {
+              setImageCount(images.length);
+              forgetDraft(path);
+              showImageDropFeedback(
+                imagePaths.length === 1
+                  ? "Image added"
+                  : `${imagePaths.length} images added`,
+              );
+            })
+            .catch(() => showImageDropFeedback("Could not add image"));
           return;
         }
 
@@ -471,7 +540,13 @@ function App() {
       disposed = true;
       unlisten?.();
     };
-  }, [imageTrayOpen, switchToPath]);
+  }, [
+    imageTrayOpen,
+    imagesSupported,
+    path,
+    showImageDropFeedback,
+    switchToPath,
+  ]);
 
   const togglePicker = useCallback(() => {
     hideHint();
@@ -515,9 +590,18 @@ function App() {
         void saveFileAs();
       },
       togglePicker,
+      toggleImages: toggleImageTray,
       unmarkdown: openUnmarkdownConfirm,
     };
-  }, [flush, newDocument, openFile, openUnmarkdownConfirm, saveFileAs, togglePicker]);
+  }, [
+    flush,
+    newDocument,
+    openFile,
+    openUnmarkdownConfirm,
+    saveFileAs,
+    toggleImageTray,
+    togglePicker,
+  ]);
 
   useEffect(() => {
     if (!isTauri()) {
@@ -562,6 +646,12 @@ function App() {
             text: "Documents",
             accelerator: "CmdOrCtrl+P",
             action: () => menuActionsRef.current.togglePicker(),
+          }),
+          await MenuItem.new({
+            id: "images",
+            text: "Images",
+            accelerator: "CmdOrCtrl+I",
+            action: () => menuActionsRef.current.toggleImages(),
           }),
           await separator(),
           await MenuItem.new({
@@ -666,7 +756,12 @@ function App() {
         return;
       }
 
-      const menuOwned = key === "n" || key === "o" || key === "p" || key === "s";
+      const menuOwned =
+        key === "i" ||
+        key === "n" ||
+        key === "o" ||
+        key === "p" ||
+        key === "s";
       if (isTauri() && menuOwned) {
         return;
       }
@@ -680,6 +775,9 @@ function App() {
       } else if (key === "p") {
         event.preventDefault();
         togglePicker();
+      } else if (key === "i") {
+        event.preventDefault();
+        toggleImageTray();
       } else if (key === "s" && event.shiftKey) {
         event.preventDefault();
         void saveFileAs();
@@ -727,6 +825,7 @@ function App() {
     ready,
     resetFontSize,
     saveFileAs,
+    toggleImageTray,
     togglePicker,
     toggleLineWrap,
     toggleContentWidth,
@@ -775,7 +874,9 @@ function App() {
           </span>
         )}
       </header>
-      <div className="editor-shell">
+      <div
+        className={`editor-shell${imageDragging ? " editor-shell-image-drag" : ""}`}
+      >
         {showWelcome ? (
           <WelcomeScreen onStart={handleStart} />
         ) : (
@@ -842,6 +943,11 @@ function App() {
             disabled={!ready}
           />
         )}
+        {(imageDragging || imageDropFeedback) && (
+          <div className="image-drop-feedback" role="status" aria-live="polite">
+            {imageDragging ? "Drop image" : imageDropFeedback}
+          </div>
+        )}
       </div>
       {!showWelcome && (
         <footer
@@ -892,14 +998,15 @@ function App() {
                 >
                   <ChromeHint
                     name="Images"
+                    keys={["⌘", "I"]}
                     className="chrome-tip-left"
                     visible={activeHint === "images"}
                   />
                   <button
                     type="button"
                     className="statusbar-toggle"
-                    aria-label={`Images, ${imageCount}.`}
-                    onClick={openImageTray}
+                    aria-label={`Images, ${imageCount}. ⌘I.`}
+                    onClick={toggleImageTray}
                   >
                     <ImagesIcon className="statusbar-toggle-icon" />
                     {imageCount > 0 && (

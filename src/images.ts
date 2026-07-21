@@ -5,6 +5,10 @@ export interface DocumentImage {
   path: string;
 }
 
+export function isImagePath(path: string): boolean {
+  return /\.(png|jpe?g|gif|webp)$/i.test(path);
+}
+
 export function listDocumentImages(
   documentPath: string,
 ): Promise<DocumentImage[]> {
