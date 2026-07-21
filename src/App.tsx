@@ -19,7 +19,9 @@ import {
   WrapOnIcon,
 } from "./statusBarIcons";
 import {
+  addDocumentImageFiles,
   addDocumentImages,
+  clipboardImageFiles,
   isImagePath,
   listDocumentImages,
 } from "./images";
@@ -120,7 +122,7 @@ function App() {
   const [imagesSupported, setImagesSupported] = useState(false);
   const [imageCount, setImageCount] = useState(0);
   const [imageDragging, setImageDragging] = useState(false);
-  const [imageDropFeedback, setImageDropFeedback] = useState<string | null>(null);
+  const [imageFeedback, setImageFeedback] = useState<string | null>(null);
   const [newDocPulse, setNewDocPulse] = useState(false);
   const [fontSize, setFontSize] = useState<FontSize>(storedFontSize);
   const [wrap, setWrap] = useState<WrapMode>(storedWrap);
@@ -279,15 +281,15 @@ function App() {
     };
   }, []);
 
-  const showImageDropFeedback = useCallback(
+  const showImageFeedback = useCallback(
     (message: string) => {
       if (imageFeedbackTimerRef.current !== undefined) {
         window.clearTimeout(imageFeedbackTimerRef.current);
       }
-      setImageDropFeedback(message);
+      setImageFeedback(message);
       bumpChrome();
       imageFeedbackTimerRef.current = window.setTimeout(() => {
-        setImageDropFeedback(null);
+        setImageFeedback(null);
         imageFeedbackTimerRef.current = undefined;
       }, IMAGE_FEEDBACK_MS);
     },
@@ -505,7 +507,7 @@ function App() {
         const imagePaths = event.payload.paths.filter(isImagePath);
         if (imagePaths.length > 0) {
           if (!imagesSupported || !path) {
-            showImageDropFeedback("Images unavailable for this file");
+            showImageFeedback("Images unavailable for this file");
             return;
           }
 
@@ -513,13 +515,13 @@ function App() {
             .then((images) => {
               setImageCount(images.length);
               forgetDraft(path);
-              showImageDropFeedback(
+              showImageFeedback(
                 imagePaths.length === 1
                   ? "Image added"
                   : `${imagePaths.length} images added`,
               );
             })
-            .catch(() => showImageDropFeedback("Could not add image"));
+            .catch(() => showImageFeedback("Could not add image"));
           return;
         }
 
@@ -544,9 +546,48 @@ function App() {
     imageTrayOpen,
     imagesSupported,
     path,
-    showImageDropFeedback,
+    showImageFeedback,
     switchToPath,
   ]);
+
+  useEffect(() => {
+    if (imageTrayOpen) {
+      return;
+    }
+
+    const editor = editorRef.current;
+    const onPaste = (event: ClipboardEvent) => {
+      if (event.target !== editor) {
+        return;
+      }
+
+      const files = clipboardImageFiles(event.clipboardData);
+      if (files.length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+      if (!imagesSupported || !path) {
+        showImageFeedback("Images unavailable for this file");
+        return;
+      }
+
+      void addDocumentImageFiles(path, files)
+        .then((images) => {
+          setImageCount(images.length);
+          forgetDraft(path);
+          showImageFeedback(
+            files.length === 1
+              ? "Image added"
+              : `${files.length} images added`,
+          );
+        })
+        .catch(() => showImageFeedback("Could not add image"));
+    };
+
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [imageTrayOpen, imagesSupported, path, showImageFeedback]);
 
   const togglePicker = useCallback(() => {
     hideHint();
@@ -943,9 +984,9 @@ function App() {
             disabled={!ready}
           />
         )}
-        {(imageDragging || imageDropFeedback) && (
+        {(imageDragging || imageFeedback) && (
           <div className="image-drop-feedback" role="status" aria-live="polite">
-            {imageDragging ? "Drop image" : imageDropFeedback}
+            {imageDragging ? "Drop image" : imageFeedback}
           </div>
         )}
       </div>

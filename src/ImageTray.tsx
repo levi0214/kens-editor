@@ -3,8 +3,9 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  addDocumentImageBytes,
+  addDocumentImageFiles,
   addDocumentImages,
+  clipboardImageFiles,
   deleteDocumentImage,
   isImagePath,
   listDocumentImages,
@@ -21,20 +22,6 @@ interface ImageTrayProps {
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function clipboardExtension(file: File): string | null {
-  const byType: Record<string, string> = {
-    "image/png": "png",
-    "image/jpeg": "jpg",
-    "image/gif": "gif",
-    "image/webp": "webp",
-  };
-  return (
-    byType[file.type] ??
-    file.name.match(/\.(png|jpe?g|gif|webp)$/i)?.[1] ??
-    null
-  );
 }
 
 function navigationStep(key: string): -1 | 1 | 0 {
@@ -157,25 +144,7 @@ export function ImageTray({
 
   const pasteImages = useCallback(
     async (files: File[]) => {
-      await runImport(async () => {
-        let next: DocumentImage[] = [];
-        for (const [index, file] of files.entries()) {
-          const extension = clipboardExtension(file);
-          if (!extension) {
-            continue;
-          }
-          const fileName = isImagePath(file.name)
-            ? file.name
-            : `pasted-${Date.now()}-${index + 1}.${extension}`;
-          const buffer = await file.arrayBuffer();
-          next = await addDocumentImageBytes(
-            documentPath,
-            fileName,
-            Array.from(new Uint8Array(buffer)),
-          );
-        }
-        return next;
-      });
+      await runImport(() => addDocumentImageFiles(documentPath, files));
     },
     [documentPath, runImport],
   );
@@ -209,13 +178,7 @@ export function ImageTray({
 
   useEffect(() => {
     const onPaste = (event: ClipboardEvent) => {
-      const files = Array.from(event.clipboardData?.items ?? [])
-        .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
-        .map((item) => item.getAsFile())
-        .filter(
-          (file): file is File =>
-            file !== null && clipboardExtension(file) !== null,
-        );
+      const files = clipboardImageFiles(event.clipboardData);
       if (files.length === 0) {
         return;
       }
