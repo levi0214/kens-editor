@@ -123,7 +123,7 @@ export function ImagesIcon(props: IconProps) {
 export function FinderIcon(props: IconProps) {
   return (
     <Icon strokeLinejoin="round" {...props}>
-      <path d="M3 5h3.2l1.5 1.5H13a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+      <path d="M3 3.75h3.2l1.5 1.5H13a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.75a1 1 0 0 1 1-1z" />
     </Icon>
   );
 }
