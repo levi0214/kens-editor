@@ -19,10 +19,6 @@ interface ImageTrayProps {
   onCountChange: (count: number) => void;
 }
 
-function displayName(name: string): string {
-  return name.replace(/^\d+_/, "");
-}
-
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -314,7 +310,10 @@ export function ImageTray({
       const step = plainKey ? navigationStep(event.key) : 0;
 
       if (previewOpen) {
-        if (step !== 0) {
+        if (plainKey && event.key === " ") {
+          event.preventDefault();
+          setPreviewOpen(false);
+        } else if (step !== 0) {
           event.preventDefault();
           moveSelection(step);
         }
@@ -414,8 +413,9 @@ export function ImageTray({
               </button>
             </div>
           ) : (
-            images.map((image) => {
+            images.map((image, index) => {
               const selected = image.path === selectedPath;
+              const label = `Image ${index + 1}`;
               return (
                 <article
                   key={image.path}
@@ -425,7 +425,7 @@ export function ImageTray({
                     ref={selected ? selectedItemRef : undefined}
                     type="button"
                     className="image-tray-open"
-                    title={displayName(image.name)}
+                    aria-label={`Open ${label.toLowerCase()}`}
                     aria-current={selected ? "true" : undefined}
                     tabIndex={selected ? 0 : -1}
                     onFocus={() => setSelectedPath(image.path)}
@@ -436,24 +436,19 @@ export function ImageTray({
                   >
                     <img
                       src={convertFileSrc(image.path)}
-                      alt={displayName(image.name)}
+                      alt=""
                     />
                   </button>
-                  <footer className="image-tray-item-footer">
-                    <span className="image-tray-name">
-                      {displayName(image.name)}
-                    </span>
-                    <button
-                      type="button"
-                      className="image-tray-delete"
-                      title="Remove"
-                      aria-label={`Remove ${displayName(image.name)}`}
-                      tabIndex={selected ? 0 : -1}
-                      onClick={() => void removeImage(image.path)}
-                    >
-                      <TrashIcon />
-                    </button>
-                  </footer>
+                  <button
+                    type="button"
+                    className="image-tray-delete"
+                    title="Remove"
+                    aria-label={`Remove ${label.toLowerCase()}`}
+                    tabIndex={selected ? 0 : -1}
+                    onClick={() => void removeImage(image.path)}
+                  >
+                    <TrashIcon />
+                  </button>
                 </article>
               );
             })
@@ -474,7 +469,7 @@ export function ImageTray({
         >
           <img
             src={convertFileSrc(selectedImage.path)}
-            alt={displayName(selectedImage.name)}
+            alt=""
           />
           <span className="image-tray-preview-count">
             {selectedIndex + 1} / {images.length}
