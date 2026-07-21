@@ -1051,7 +1051,7 @@ body,
   position: relative;
   min-width: 0;
   border: 2px solid rgb(127 127 127 / 14%);
-  border-radius: 7px;
+  border-radius: 2px;
   background: var(--editor-bg);
   overflow: hidden;
 }
