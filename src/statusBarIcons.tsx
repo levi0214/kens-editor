@@ -110,6 +110,16 @@ export function PlusIcon(props: IconProps) {
   );
 }
 
+export function ImagesIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="2" y="3" width="12" height="10" rx="1.5" />
+      <circle cx="5.25" cy="6.25" r="1" />
+      <path d="m3.5 11 3-3 2.25 2.25 1.5-1.5L12.5 11" />
+    </Icon>
+  );
+}
+
 export function FinderIcon(props: IconProps) {
   return (
     <Icon strokeLinejoin="round" {...props}>

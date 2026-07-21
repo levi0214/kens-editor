@@ -7,6 +7,9 @@ use std::time::UNIX_EPOCH;
 
 const VAULT_DIR_NAME: &str = "KensEditor";
 const PINS_FILE_NAME: &str = ".pins.json";
+const ATTACHMENTS_DIR_NAME: &str = "Attachments";
+const MAX_PASTED_IMAGE_BYTES: usize = 20 * 1024 * 1024;
+const IMAGE_TYPE_ERROR: &str = "Only PNG, JPEG, GIF, and WebP images are supported";
 const PREVIEW_MAX_CHARS: usize = 360;
 const PREVIEW_READ_BYTES: usize = PREVIEW_MAX_CHARS * 4;
 
@@ -172,6 +175,135 @@ fn vault_file_name(path: &Path) -> Result<String, String> {
         .ok_or_else(|| "Not a vault document".to_string())
 }
 
+fn vault_document_stem(path: &Path) -> Result<String, String> {
+    if !is_vault_text_file(path) {
+        return Err("Not a vault document".to_string());
+    }
+
+    let vault = ensure_vault_exists()?;
+    let canonical_vault = fs::canonicalize(&vault).map_err(|error| error.to_string())?;
+    let canonical_path = fs::canonicalize(path).map_err(|error| error.to_string())?;
+
+    if canonical_path.parent() != Some(canonical_vault.as_path()) {
+        return Err("Not a vault document".to_string());
+    }
+
+    canonical_path
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().into_owned())
+        .filter(|stem| !stem.is_empty())
+        .ok_or_else(|| "Not a vault document".to_string())
+}
+
+fn document_images_dir(document_path: &Path) -> Result<PathBuf, String> {
+    let stem = vault_document_stem(document_path)?;
+    Ok(ensure_vault_exists()?.join(ATTACHMENTS_DIR_NAME).join(stem))
+}
+
+fn image_extension(path: &Path) -> Option<String> {
+    let extension = path.extension()?.to_string_lossy().to_lowercase();
+    matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "gif" | "webp").then_some(extension)
+}
+
+fn next_image_path(dir: &Path, source: &Path) -> Result<PathBuf, String> {
+    let original_name = source
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .filter(|name| !name.is_empty())
+        .ok_or_else(|| "Invalid image file".to_string())?;
+    let mut highest = 0u32;
+
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir).map_err(|error| error.to_string())? {
+            let entry = entry.map_err(|error| error.to_string())?;
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let Some((prefix, _)) = name.split_once('_') else {
+                continue;
+            };
+            if let Ok(index) = prefix.parse::<u32>() {
+                highest = highest.max(index);
+            }
+        }
+    }
+
+    let index = highest
+        .checked_add(1)
+        .ok_or_else(|| "Too many images".to_string())?;
+    Ok(dir.join(format!("{index:03}_{original_name}")))
+}
+
+fn store_document_image(
+    dir: &Path,
+    source_name: &Path,
+    write: impl FnOnce(&Path) -> Result<(), String>,
+) -> Result<(), String> {
+    if image_extension(source_name).is_none() {
+        return Err(IMAGE_TYPE_ERROR.to_string());
+    }
+
+    fs::create_dir_all(dir).map_err(|error| error.to_string())?;
+    let target = next_image_path(dir, source_name)?;
+    let temp = target.with_extension("tmp");
+
+    if let Err(error) = write(&temp) {
+        let _ = fs::remove_file(&temp);
+        return Err(error);
+    }
+    if let Err(error) = fs::rename(&temp, &target) {
+        let _ = fs::remove_file(&temp);
+        return Err(error.to_string());
+    }
+    Ok(())
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DocumentImage {
+    name: String,
+    path: String,
+}
+
+fn read_document_images(dir: &Path) -> Result<Vec<DocumentImage>, String> {
+    if !dir.is_dir() {
+        return Ok(Vec::new());
+    }
+
+    let mut images = Vec::new();
+    for entry in fs::read_dir(dir).map_err(|error| error.to_string())? {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let path = entry.path();
+        if !entry
+            .file_type()
+            .map_err(|error| error.to_string())?
+            .is_file()
+            || image_extension(&path).is_none()
+        {
+            continue;
+        }
+
+        images.push(DocumentImage {
+            name: entry.file_name().to_string_lossy().into_owned(),
+            path: path.to_string_lossy().into_owned(),
+        });
+    }
+    images.sort_by(|left, right| left.name.cmp(&right.name));
+    Ok(images)
+}
+
+fn checked_document_image(document_path: &Path, image_path: &Path) -> Result<PathBuf, String> {
+    let dir = document_images_dir(document_path)?;
+    let canonical_dir = fs::canonicalize(&dir).map_err(|error| error.to_string())?;
+    let canonical_image = fs::canonicalize(image_path).map_err(|error| error.to_string())?;
+
+    if canonical_image.parent() != Some(canonical_dir.as_path())
+        || image_extension(&canonical_image).is_none()
+    {
+        return Err("Not an image for this document".to_string());
+    }
+
+    Ok(canonical_image)
+}
+
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct VaultDocument {
@@ -304,6 +436,11 @@ fn delete_vault_document(path: String) -> Result<(), String> {
 
     let name = vault_file_name(&path)?;
     let dir = ensure_vault_exists()?;
+    let images_dir = document_images_dir(&path)?;
+
+    if images_dir.is_dir() {
+        trash::delete(&images_dir).map_err(|error| error.to_string())?;
+    }
 
     if path.exists() {
         trash::delete(&path).map_err(|error| error.to_string())?;
@@ -315,6 +452,91 @@ fn delete_vault_document(path: String) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+#[tauri::command]
+fn list_document_images(document_path: String) -> Result<Vec<DocumentImage>, String> {
+    let dir = document_images_dir(Path::new(&document_path))?;
+    read_document_images(&dir)
+}
+
+#[tauri::command]
+fn add_document_images(
+    document_path: String,
+    source_paths: Vec<String>,
+) -> Result<Vec<DocumentImage>, String> {
+    let dir = document_images_dir(Path::new(&document_path))?;
+
+    for source_path in source_paths {
+        let source = PathBuf::from(source_path);
+        if !source.is_file() {
+            return Err("Image file not found".to_string());
+        }
+        store_document_image(&dir, &source, |temp| {
+            fs::copy(&source, temp)
+                .map(|_| ())
+                .map_err(|error| error.to_string())
+        })?;
+    }
+
+    read_document_images(&dir)
+}
+
+#[tauri::command]
+fn add_document_image_bytes(
+    document_path: String,
+    file_name: String,
+    bytes: Vec<u8>,
+) -> Result<Vec<DocumentImage>, String> {
+    if bytes.is_empty() || bytes.len() > MAX_PASTED_IMAGE_BYTES {
+        return Err("Image must be between 1 byte and 20 MB".to_string());
+    }
+
+    let source_name = PathBuf::from(file_name);
+    let dir = document_images_dir(Path::new(&document_path))?;
+    store_document_image(&dir, &source_name, |temp| {
+        fs::write(temp, bytes).map_err(|error| error.to_string())
+    })?;
+    read_document_images(&dir)
+}
+
+#[tauri::command]
+fn delete_document_image(document_path: String, image_path: String) -> Result<(), String> {
+    let document_path = PathBuf::from(document_path);
+    let image = checked_document_image(&document_path, Path::new(&image_path))?;
+    trash::delete(&image).map_err(|error| error.to_string())?;
+
+    let dir = document_images_dir(&document_path)?;
+    if dir
+        .read_dir()
+        .map_err(|error| error.to_string())?
+        .next()
+        .is_none()
+    {
+        fs::remove_dir(&dir).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn reveal_document_images(document_path: String) -> Result<(), String> {
+    let dir = document_images_dir(Path::new(&document_path))?;
+    fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(dir)
+            .spawn()
+            .map_err(|error| error.to_string())?;
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = dir;
+        Err("Reveal in Finder is only supported on macOS".to_string())
+    }
 }
 
 #[tauri::command]
@@ -383,6 +605,11 @@ pub fn run() {
             delete_vault_document,
             toggle_vault_document_pin,
             reveal_vault_in_finder,
+            list_document_images,
+            add_document_images,
+            add_document_image_bytes,
+            delete_document_image,
+            reveal_document_images,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -3,10 +3,12 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DocumentPicker } from "./DocumentPicker";
+import { ImageTray } from "./ImageTray";
 import { flipDirection } from "./documentNav";
 import {
   FontSizeIcon,
   FullWidthIcon,
+  ImagesIcon,
   NarrowWidthIcon,
   PlusIcon,
   UnmarkdownIcon,
@@ -16,6 +18,7 @@ import {
   WrapOffIcon,
   WrapOnIcon,
 } from "./statusBarIcons";
+import { listDocumentImages } from "./images";
 import {
   applyFontSize,
   DEFAULT_FONT_SIZE,
@@ -106,6 +109,9 @@ function App() {
   const showWelcome = onboardingStatus === "welcome";
   const onboardingComplete = onboardingStatus === "complete";
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [imageTrayOpen, setImageTrayOpen] = useState(false);
+  const [imagesSupported, setImagesSupported] = useState(false);
+  const [imageCount, setImageCount] = useState(0);
   const [newDocPulse, setNewDocPulse] = useState(false);
   const [fontSize, setFontSize] = useState<FontSize>(storedFontSize);
   const [wrap, setWrap] = useState<WrapMode>(storedWrap);
@@ -116,7 +122,7 @@ function App() {
   const { flush, markLoaded, saveError } = useAutoSave(text, path);
   useFlushOnClose(flush);
   const { visible: chromeVisible, bump: bumpChrome } = useChromeIdle(
-    !pickerOpen && !saveError && !showWelcome,
+    !pickerOpen && !imageTrayOpen && !saveError && !showWelcome,
     chromeHovered,
   );
   useWindowFullscreen();
@@ -263,8 +269,25 @@ function App() {
 
   const openPicker = useCallback(() => {
     hideHint();
+    setImageTrayOpen(false);
     setPickerOpen(true);
   }, [hideHint]);
+
+  const openImageTray = useCallback(() => {
+    hideHint();
+    setPickerOpen(false);
+    setImageTrayOpen(true);
+  }, [hideHint]);
+
+  const handleImageCountChange = useCallback(
+    (count: number) => {
+      setImageCount(count);
+      if (count > 0 && path) {
+        forgetDraft(path);
+      }
+    },
+    [path],
+  );
 
   const { flipDocument, loadFromPath, switchToPath, listPath } = useDocumentSwitch({
     path,
@@ -293,7 +316,7 @@ function App() {
       return;
     }
 
-    if (text.length === 0) {
+    if (text.length === 0 && imageCount === 0) {
       pulseNewDocument();
       focusEditor(editorRef.current);
       return;
@@ -307,7 +330,33 @@ function App() {
     markLoaded(filePath, "");
     pulseNewDocument();
     focusEditor(editorRef.current);
-  }, [flush, markLoaded, onboardingComplete, path, pulseNewDocument, text]);
+  }, [flush, imageCount, markLoaded, onboardingComplete, path, pulseNewDocument, text]);
+
+  useEffect(() => {
+    let active = true;
+    setImageTrayOpen(false);
+    setImagesSupported(false);
+    setImageCount(0);
+
+    if (path === null) {
+      return () => {
+        active = false;
+      };
+    }
+
+    void listDocumentImages(path)
+      .then((images) => {
+        if (active) {
+          setImagesSupported(true);
+          setImageCount(images.length);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, [path]);
 
   useEffect(() => {
     if (!onboardingComplete) {
@@ -393,10 +442,15 @@ function App() {
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
+    let disposed = false;
 
     void getCurrentWindow()
       .onDragDropEvent((event) => {
         if (event.payload.type !== "drop") {
+          return;
+        }
+
+        if (imageTrayOpen) {
           return;
         }
 
@@ -406,16 +460,22 @@ function App() {
         }
       })
       .then((stop) => {
-        unlisten = stop;
+        if (disposed) {
+          stop();
+        } else {
+          unlisten = stop;
+        }
       });
 
     return () => {
+      disposed = true;
       unlisten?.();
     };
-  }, [switchToPath]);
+  }, [imageTrayOpen, switchToPath]);
 
   const togglePicker = useCallback(() => {
     hideHint();
+    setImageTrayOpen(false);
     setPickerOpen((open) => {
       if (open) {
         focusEditor(editorRef.current);
@@ -588,6 +648,7 @@ function App() {
       if (
         direction !== null &&
         !pickerOpen &&
+        !imageTrayOpen &&
         !unmarkdownConfirmOpen &&
         onboardingComplete &&
         ready
@@ -657,6 +718,7 @@ function App() {
     flipDocument,
     flush,
     increaseFontSize,
+    imageTrayOpen,
     onboardingComplete,
     openUnmarkdownConfirm,
     newDocument,
@@ -820,6 +882,32 @@ function App() {
                   </span>
                 </button>
               </span>
+              {imagesSupported && (
+                <span
+                  className="chrome-tip-wrap"
+                  onMouseEnter={() => showHint("images")}
+                  onMouseLeave={hideHint}
+                  onFocus={() => showHint("images")}
+                  onBlur={hideHint}
+                >
+                  <ChromeHint
+                    name="Images"
+                    className="chrome-tip-left"
+                    visible={activeHint === "images"}
+                  />
+                  <button
+                    type="button"
+                    className="statusbar-toggle"
+                    aria-label={`Images, ${imageCount}.`}
+                    onClick={openImageTray}
+                  >
+                    <ImagesIcon className="statusbar-toggle-icon" />
+                    {imageCount > 0 && (
+                      <span className="statusbar-toggle-value">{imageCount}</span>
+                    )}
+                  </button>
+                </span>
+              )}
               <span
                 className="chrome-tip-wrap"
                 onMouseEnter={() => showHint("unmarkdown")}
@@ -978,6 +1066,16 @@ function App() {
           onSwitch={(filePath) => {
             void switchToPath(filePath);
           }}
+        />
+      )}
+      {imageTrayOpen && path && imagesSupported && onboardingComplete && (
+        <ImageTray
+          documentPath={path}
+          onClose={() => {
+            setImageTrayOpen(false);
+            focusEditor(editorRef.current);
+          }}
+          onCountChange={handleImageCountChange}
         />
       )}
     </div>
