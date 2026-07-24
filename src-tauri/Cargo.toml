@@ -2,7 +2,7 @@
 name = "kens-editor"
 version = "0.13.0"
 description = "Ken's Editor"
-authors = ["you"]
+authors = ["Luyao"]
 edition = "2021"
 
 [lib]
