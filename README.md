@@ -4,6 +4,12 @@ A stack of autosaved blank pages on a Mac. Write, flip, done.
 
 Plain text only, saved as `.txt` in `~/Documents/KensEditor/`. No Markdown. Not a notes app.
 
+![Writing view](screenshots/editor.png)
+
+![Documents list](screenshots/documents.png)
+
+![Images](screenshots/images.png)
+
 ## Run it
 
 Needs macOS, [Node.js](https://nodejs.org/), and [Rust](https://rustup.rs/).
