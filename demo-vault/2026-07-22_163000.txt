@@ -1,0 +1,6 @@
+[Demo] Longer preview sample
+
+Enough text to show how the picker truncates a card.
+Line two. Line three. Line four.
+Still fake. Still only here for the screenshot grid.
+Padding sentence. Another padding sentence. Done.

@@ -1,0 +1,6 @@
+[Demo] Meeting notes template
+
+Agenda: example item
+Decision: example decision
+Next: example next step
+No real meeting occurred.

@@ -1,0 +1,4 @@
+[Demo] Social post draft (do not post)
+
+A blank page that saves itself.
+Shown here as layout filler only.

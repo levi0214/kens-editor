@@ -1,0 +1,5 @@
+[Demo] Bookshelf labels
+Spine A
+Spine B
+Spine C
+(props, not a library)

@@ -1,0 +1,6 @@
+[Demo] Spec fragment
+
+v1: local files only
+v1: no sync
+v1: Command-P to browse pages
+Placeholder bullets for layout.

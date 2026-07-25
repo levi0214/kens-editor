@@ -1,0 +1,5 @@
+[Demo] Travel-shaped filler
+
+Station A → Station B
+Window seat. Sample paragraph.
+Used only to fill a card in Command-P.

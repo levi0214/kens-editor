@@ -1,0 +1,4 @@
+[Demo] Sample page for screenshots
+
+This folder is fake content for product photos.
+Safe to show. Nothing personal here.

@@ -1,0 +1,6 @@
+[Demo] Grocery-shaped filler
+apples
+bread
+coffee
+oats
+(still fake)

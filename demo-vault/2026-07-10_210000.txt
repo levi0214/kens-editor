@@ -1,0 +1,6 @@
+[Demo] Changelog-shaped filler
+
+- added example
+- removed example
+- fixed example
+Not the real release notes.

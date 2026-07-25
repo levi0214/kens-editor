@@ -1,0 +1,5 @@
+[Demo] Email draft template
+
+Subject: Example
+Body: Thanks — Thursday works.
+Replace before sending. This was never sent.

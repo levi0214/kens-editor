@@ -1,0 +1,5 @@
+[Demo] About-page scratch
+
+Ken's Editor: autosaved blank pages on a Mac.
+Local .txt files. No markdown preview.
+This sentence exists for the screenshot.

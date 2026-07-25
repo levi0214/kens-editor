@@ -1,0 +1,5 @@
+[Demo] Workout log template
+
+Distance: —
+Time: —
+Notes: sample row only

@@ -1,0 +1,4 @@
+[Demo] Quote placeholder
+
+"The best code is no code."
+— attributed everywhere; used here as filler

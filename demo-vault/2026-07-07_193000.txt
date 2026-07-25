@@ -1,0 +1,5 @@
+[Demo] How the picker works
+
+First lines become the preview.
+Dates come from filenames.
+Pin a few samples for the top row.

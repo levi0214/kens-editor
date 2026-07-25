@@ -1,0 +1,5 @@
+[Demo] Three-line stub
+
+Alpha
+Bravo
+Charlie
