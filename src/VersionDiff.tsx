@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   buildDocumentDiff,
   splitDocumentDiffLines,
@@ -18,12 +18,23 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function DiffLine({ line }: { line: DocumentDiffLine }) {
+function DiffLine({
+  line,
+  onExpand,
+}: {
+  line: DocumentDiffLine;
+  onExpand: () => void;
+}) {
   if (line.kind === "separator") {
     return (
-      <div className="version-diff-separator" aria-hidden="true">
+      <button
+        type="button"
+        className="version-diff-separator"
+        aria-label="Show full document"
+        onClick={onExpand}
+      >
         ···
-      </div>
+      </button>
     );
   }
 
@@ -53,6 +64,8 @@ export function VersionDiff({
 }: VersionDiffProps) {
   const [texts, setTexts] = useState<{ previous: string; selected: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showFullDocument, setShowFullDocument] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -81,9 +94,22 @@ export function VersionDiff({
     };
   }, [documentPath, previousVersion, version.id]);
 
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+  }, [showFullDocument, version.id]);
+
   const diff = useMemo(
-    () => (texts === null ? null : buildDocumentDiff(texts.previous, texts.selected)),
-    [texts],
+    () =>
+      texts === null
+        ? null
+        : buildDocumentDiff(
+            texts.previous,
+            texts.selected,
+            showFullDocument ? null : 4,
+          ),
+    [showFullDocument, texts],
   );
   const splitRows = useMemo(
     () => (diff === null ? [] : splitDocumentDiffLines(diff.lines)),
@@ -111,17 +137,28 @@ export function VersionDiff({
           <span>{previousVersion ? `V${previousVersion.number}` : "Start"}</span>
           <strong>V{version.number}</strong>
         </span>
-        <button
-          type="button"
-          className="version-diff-close"
-          aria-label="Close diff"
-          onClick={onClose}
-        >
-          <CloseIcon />
-        </button>
+        <span className="version-diff-controls">
+          {showFullDocument && (
+            <button
+              type="button"
+              className="version-diff-view-toggle"
+              onClick={() => setShowFullDocument(false)}
+            >
+              Changes only
+            </button>
+          )}
+          <button
+            type="button"
+            className="version-diff-close"
+            aria-label="Close diff"
+            onClick={onClose}
+          >
+            <CloseIcon />
+          </button>
+        </span>
       </header>
 
-      <div className="version-diff-scroll">
+      <div className="version-diff-scroll" ref={scrollRef}>
         <div className="version-diff-content">
           {error ? (
             <p className="version-diff-state version-diff-state-error">{error}</p>
@@ -133,22 +170,42 @@ export function VersionDiff({
             <>
               <div className="version-diff-unified">
                 {diff.lines.map((line, index) => (
-                  <DiffLine line={line} key={index} />
+                  <DiffLine
+                    line={line}
+                    onExpand={() => setShowFullDocument(true)}
+                    key={index}
+                  />
                 ))}
               </div>
               <div className="version-diff-split">
                 {splitRows.map((row, index) =>
                   row.kind === "separator" ? (
-                    <div className="version-diff-split-separator" aria-hidden="true" key={index}>
+                    <button
+                      type="button"
+                      className="version-diff-split-separator"
+                      aria-label="Show full document"
+                      onClick={() => setShowFullDocument(true)}
+                      key={index}
+                    >
                       ···
-                    </div>
+                    </button>
                   ) : (
                     <div className="version-diff-split-row" key={index}>
                       <div className="version-diff-split-cell">
-                        {row.left && <DiffLine line={row.left} />}
+                        {row.left && (
+                          <DiffLine
+                            line={row.left}
+                            onExpand={() => setShowFullDocument(true)}
+                          />
+                        )}
                       </div>
                       <div className="version-diff-split-cell version-diff-split-cell-right">
-                        {row.right && <DiffLine line={row.right} />}
+                        {row.right && (
+                          <DiffLine
+                            line={row.right}
+                            onExpand={() => setShowFullDocument(true)}
+                          />
+                        )}
                       </div>
                     </div>
                   ),
