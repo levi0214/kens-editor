@@ -20,7 +20,10 @@ interface VersionHistoryProps {
   selectedVersionId: string | null;
   onClose: () => void;
   onSelectCurrent: () => void;
-  onSelectVersion: (version: DocumentVersion) => void;
+  onSelectVersion: (
+    version: DocumentVersion,
+    previousVersion: DocumentVersion | null,
+  ) => void;
   onVersionsChange: (count: number) => void;
 }
 
@@ -219,15 +222,16 @@ export function VersionHistory({
         {!loading && versions.length === 0 && (
           <p className="versions-empty">No saved versions yet.</p>
         )}
-        {versions.map((version) => {
+        {versions.map((version, index) => {
           const changes = lineChanges[version.id];
+          const previousVersion = versions[index + 1] ?? null;
           return (
             <button
               type="button"
               className={`versions-item${selectedVersionId === version.id ? " versions-item-selected" : ""}`}
               aria-pressed={selectedVersionId === version.id}
               key={version.id}
-              onClick={() => onSelectVersion(version)}
+              onClick={() => onSelectVersion(version, previousVersion)}
             >
               <span className="versions-item-heading">
                 <span className="versions-item-number">V{version.number}</span>

@@ -10,7 +10,7 @@ import { readDocumentVersion, type DocumentVersion } from "./versions";
 interface VersionDiffProps {
   documentPath: string;
   version: DocumentVersion;
-  currentText: string;
+  previousVersion: DocumentVersion | null;
   onClose: () => void;
 }
 
@@ -27,13 +27,8 @@ function DiffLine({ line }: { line: DocumentDiffLine }) {
     );
   }
 
-  const marker = line.kind === "added" ? "+" : line.kind === "removed" ? "−" : "";
-
   return (
     <div className={`version-diff-line version-diff-line-${line.kind}`}>
-      <span className="version-diff-marker" aria-hidden="true">
-        {marker}
-      </span>
       <span className="version-diff-line-text">
         {line.spans
           ? line.spans.map((span, index) => (
@@ -53,21 +48,26 @@ function DiffLine({ line }: { line: DocumentDiffLine }) {
 export function VersionDiff({
   documentPath,
   version,
-  currentText,
+  previousVersion,
   onClose,
 }: VersionDiffProps) {
-  const [savedText, setSavedText] = useState<string | null>(null);
+  const [texts, setTexts] = useState<{ previous: string; selected: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    setSavedText(null);
+    setTexts(null);
     setError(null);
 
-    void readDocumentVersion(documentPath, version.id)
-      .then((contents) => {
+    void Promise.all([
+      previousVersion
+        ? readDocumentVersion(documentPath, previousVersion.id)
+        : Promise.resolve(""),
+      readDocumentVersion(documentPath, version.id),
+    ])
+      .then(([previous, selected]) => {
         if (active) {
-          setSavedText(contents);
+          setTexts({ previous, selected });
         }
       })
       .catch((readError) => {
@@ -79,11 +79,11 @@ export function VersionDiff({
     return () => {
       active = false;
     };
-  }, [documentPath, version.id]);
+  }, [documentPath, previousVersion, version.id]);
 
   const diff = useMemo(
-    () => (savedText === null ? null : buildDocumentDiff(savedText, currentText)),
-    [currentText, savedText],
+    () => (texts === null ? null : buildDocumentDiff(texts.previous, texts.selected)),
+    [texts],
   );
   const splitRows = useMemo(
     () => (diff === null ? [] : splitDocumentDiffLines(diff.lines)),
@@ -91,14 +91,21 @@ export function VersionDiff({
   );
 
   return (
-    <section className="version-diff" aria-label={`V${version.number} compared with current`}>
+    <section
+      className="version-diff"
+      aria-label={
+        previousVersion
+          ? `V${version.number} compared with V${previousVersion.number}`
+          : `V${version.number} compared with the blank start`
+      }
+    >
       <header className="version-diff-header">
         <span className="version-diff-title">
-          <strong>V{version.number}</strong>
+          <span>{previousVersion ? `V${previousVersion.number}` : "Start"}</span>
           <span className="version-diff-arrow" aria-hidden="true">
             →
           </span>
-          <span>Current</span>
+          <strong>V{version.number}</strong>
         </span>
         <button
           type="button"
@@ -117,7 +124,7 @@ export function VersionDiff({
           ) : diff === null ? (
             <p className="version-diff-state">Loading…</p>
           ) : !diff.hasChanges ? (
-            <p className="version-diff-state">No changes from V{version.number}.</p>
+            <p className="version-diff-state">No changes in V{version.number}.</p>
           ) : (
             <>
               <div className="version-diff-unified">

@@ -320,8 +320,6 @@ body,
 }
 
 .version-diff-line {
-  display: grid;
-  grid-template-columns: 1.4em minmax(0, 1fr);
   min-height: 1.5em;
 }
 
@@ -339,17 +337,10 @@ body,
   background: var(--diff-removed-bg);
 }
 
-.version-diff-marker {
-  user-select: none;
-}
-
-.version-diff-marker {
-  text-align: center;
-}
-
 .version-diff-line-text {
+  display: block;
   min-width: 0;
-  padding-right: 0.7ch;
+  padding: 0 0.7ch;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -386,7 +377,7 @@ body,
 
 .version-diff-split-separator {
   min-height: 1.5em;
-  padding-left: 1.4em;
+  padding-left: 0.7ch;
   color: var(--statusbar-fg);
   opacity: 0.55;
   user-select: none;

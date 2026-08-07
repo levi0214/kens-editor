@@ -130,7 +130,10 @@ function App() {
   const [versionsSupported, setVersionsSupported] = useState(false);
   const [versionCount, setVersionCount] = useState(0);
   const [saveVersionRequest, setSaveVersionRequest] = useState(0);
-  const [diffVersion, setDiffVersion] = useState<DocumentVersion | null>(null);
+  const [diffSelection, setDiffSelection] = useState<{
+    version: DocumentVersion;
+    previousVersion: DocumentVersion | null;
+  } | null>(null);
   const [imagesSupported, setImagesSupported] = useState(false);
   const [imageCount, setImageCount] = useState(0);
   const [imageDragging, setImageDragging] = useState(false);
@@ -153,7 +156,7 @@ function App() {
 
   useEffect(() => {
     if (!versionsOpen) {
-      setDiffVersion(null);
+      setDiffSelection(null);
     }
   }, [versionsOpen]);
 
@@ -177,7 +180,7 @@ function App() {
   }, []);
 
   const closeVersionDiff = useCallback(() => {
-    setDiffVersion(null);
+    setDiffSelection(null);
     requestAnimationFrame(() => focusEditor(editorRef.current));
   }, []);
 
@@ -854,7 +857,7 @@ function App() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && versionsOpen) {
         event.preventDefault();
-        if (diffVersion) {
+        if (diffSelection) {
           closeVersionDiff();
         } else {
           setVersionsOpen(false);
@@ -956,7 +959,7 @@ function App() {
     bumpChrome,
     closeVersionDiff,
     decreaseFontSize,
-    diffVersion,
+    diffSelection,
     flipDocument,
     flush,
     increaseFontSize,
@@ -1025,11 +1028,11 @@ function App() {
       <div
         className={`editor-shell${imageDragging ? " editor-shell-image-drag" : ""}`}
       >
-        {diffVersion && path ? (
+        {diffSelection && path ? (
           <VersionDiff
             documentPath={path}
-            version={diffVersion}
-            currentText={text}
+            version={diffSelection.version}
+            previousVersion={diffSelection.previousVersion}
             onClose={closeVersionDiff}
           />
         ) : showWelcome ? (
@@ -1342,13 +1345,15 @@ function App() {
           currentText={text}
           beforeSave={flush}
           saveRequest={saveVersionRequest}
-          selectedVersionId={diffVersion?.id ?? null}
+          selectedVersionId={diffSelection?.version.id ?? null}
           onClose={() => {
             setVersionsOpen(false);
             closeVersionDiff();
           }}
           onSelectCurrent={closeVersionDiff}
-          onSelectVersion={setDiffVersion}
+          onSelectVersion={(version, previousVersion) => {
+            setDiffSelection({ version, previousVersion });
+          }}
           onVersionsChange={setVersionCount}
         />
       )}
