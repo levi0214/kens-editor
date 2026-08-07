@@ -10,9 +10,11 @@ import { type DocumentVersion } from "./versions";
 interface VersionDiffProps {
   documentPath: string;
   readVersion: (versionId: string) => Promise<string>;
+  readAttempt: number;
   version: DocumentVersion;
   previousVersion: DocumentVersion | null;
   onClose: () => void;
+  onRetry: () => void;
 }
 
 type DiffLoadState =
@@ -20,12 +22,14 @@ type DiffLoadState =
       documentPath: string;
       previousVersionId: string | null;
       versionId: string;
+      readAttempt: number;
       status: "loading";
     }
   | {
       documentPath: string;
       previousVersionId: string | null;
       versionId: string;
+      readAttempt: number;
       status: "loaded";
       previous: string;
       selected: string;
@@ -34,6 +38,7 @@ type DiffLoadState =
       documentPath: string;
       previousVersionId: string | null;
       versionId: string;
+      readAttempt: number;
       status: "error";
       message: string;
     };
@@ -43,12 +48,14 @@ function loadStateMatches(
   documentPath: string,
   previousVersionId: string | null,
   versionId: string,
+  readAttempt: number,
 ): state is DiffLoadState {
   return (
     state !== null &&
     state.documentPath === documentPath &&
     state.previousVersionId === previousVersionId &&
-    state.versionId === versionId
+    state.versionId === versionId &&
+    state.readAttempt === readAttempt
   );
 }
 
@@ -107,9 +114,11 @@ function DiffLine({
 export function VersionDiff({
   documentPath,
   readVersion,
+  readAttempt,
   version,
   previousVersion,
   onClose,
+  onRetry,
 }: VersionDiffProps) {
   const [loadState, setLoadState] = useState<DiffLoadState | null>(null);
   const [showFullDocument, setShowFullDocument] = useState(false);
@@ -125,6 +134,7 @@ export function VersionDiff({
     documentPath,
     previousVersionId,
     version.id,
+    readAttempt,
   )
     ? loadState
     : null;
@@ -135,6 +145,7 @@ export function VersionDiff({
       documentPath,
       previousVersionId,
       versionId: version.id,
+      readAttempt,
       status: "loading",
     });
 
@@ -150,6 +161,7 @@ export function VersionDiff({
             documentPath,
             previousVersionId,
             versionId: version.id,
+            readAttempt,
             status: "loaded",
             previous,
             selected,
@@ -162,6 +174,7 @@ export function VersionDiff({
             documentPath,
             previousVersionId,
             versionId: version.id,
+            readAttempt,
             status: "error",
             message: errorText(readError),
           });
@@ -171,7 +184,7 @@ export function VersionDiff({
     return () => {
       active = false;
     };
-  }, [documentPath, previousVersionId, readVersion, version.id]);
+  }, [documentPath, previousVersionId, readAttempt, readVersion, version.id]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -281,9 +294,16 @@ export function VersionDiff({
       <div className="version-diff-scroll" ref={scrollRef}>
         <div className="version-diff-content">
           {currentLoadState?.status === "error" ? (
-            <p className="version-diff-state version-diff-state-error">
-              {currentLoadState.message}
-            </p>
+            <div
+              className="version-diff-state version-diff-state-error"
+              role="alert"
+              title={currentLoadState.message}
+            >
+              <span>Could not load diff</span>
+              <button type="button" onClick={onRetry}>
+                Retry
+              </button>
+            </div>
           ) : diff === null ? (
             <p className="version-diff-state">Loading…</p>
           ) : !diff.hasChanges ? (

@@ -457,7 +457,27 @@ body,
 }
 
 .version-diff-state-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 360px;
   color: #c44;
+}
+
+.version-diff-state-error button {
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font: inherit;
+  color: inherit;
+  background: none;
+  cursor: pointer;
+  transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.version-diff-state-error button:active {
+  transform: scale(0.97);
 }
 
 @container version-diff (min-width: 720px) {
@@ -1645,6 +1665,11 @@ body,
   color: inherit;
   background: none;
   cursor: pointer;
+  transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.versions-error button:active {
+  transform: scale(0.97);
 }
 
 @media (max-width: 720px) {

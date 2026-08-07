@@ -91,6 +91,23 @@ import "./App.css";
 const NEW_DOC_PULSE_MS = 180;
 const HINT_DELAY_MS = 250;
 const IMAGE_FEEDBACK_MS = 1400;
+const NOT_A_VAULT_DOCUMENT_ERROR = "Not a vault document";
+
+type VersionCatalogState =
+  | {
+      documentPath: string;
+      status: "ready";
+      versions: DocumentVersion[];
+    }
+  | {
+      documentPath: string;
+      status: "error";
+      message: string;
+    }
+  | {
+      documentPath: string;
+      status: "unsupported";
+    };
 
 function focusEditor(editor: HTMLTextAreaElement | null): void {
   void getCurrentWindow().setFocus();
@@ -138,12 +155,24 @@ function App() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [imageTrayOpen, setImageTrayOpen] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
-  const [versionCatalog, setVersionCatalog] = useState<{
-    documentPath: string;
-    versions: DocumentVersion[];
-  } | null>(null);
-  const versionsSupported = versionCatalog?.documentPath === path;
-  const versions = versionsSupported ? versionCatalog.versions : [];
+  const [versionCatalog, setVersionCatalog] =
+    useState<VersionCatalogState | null>(null);
+  const [versionCatalogAttempt, setVersionCatalogAttempt] = useState(0);
+  const [versionReadAttempt, setVersionReadAttempt] = useState(0);
+  const currentVersionCatalog =
+    versionCatalog?.documentPath === path ? versionCatalog : null;
+  const versionsSupported = currentVersionCatalog?.status === "ready";
+  const versionsAvailable =
+    currentVersionCatalog?.status === "ready" ||
+    currentVersionCatalog?.status === "error";
+  const versions =
+    currentVersionCatalog?.status === "ready"
+      ? currentVersionCatalog.versions
+      : [];
+  const versionCatalogError =
+    currentVersionCatalog?.status === "error"
+      ? currentVersionCatalog.message
+      : null;
   const [versionSaving, setVersionSaving] = useState(false);
   const [versionSaveError, setVersionSaveError] = useState<string | null>(null);
   const versionSavingRef = useRef(false);
@@ -374,8 +403,16 @@ function App() {
     });
   }, [hideHint, imagesSupported]);
 
+  const retryVersionCatalog = useCallback(() => {
+    setVersionCatalogAttempt((attempt) => attempt + 1);
+  }, []);
+
+  const retryVersionReads = useCallback(() => {
+    setVersionReadAttempt((attempt) => attempt + 1);
+  }, []);
+
   const toggleVersions = useCallback(() => {
-    if (!versionsSupported) {
+    if (!versionsAvailable) {
       return;
     }
 
@@ -388,7 +425,7 @@ function App() {
     } else {
       setVersionsOpen(true);
     }
-  }, [closeVersionDiff, hideHint, versionsOpen, versionsSupported]);
+  }, [closeVersionDiff, hideHint, versionsAvailable, versionsOpen]);
 
   const saveCurrentVersion = useCallback(async (): Promise<SaveVersionResult | null> => {
     if (
@@ -433,9 +470,11 @@ function App() {
 
           if (currentPathRef.current === saveRequest.documentPath) {
             setVersionCatalog((current) =>
-              current?.documentPath === saveRequest.documentPath
+              current?.documentPath === saveRequest.documentPath &&
+              current.status === "ready"
                 ? {
                     documentPath: saveRequest.documentPath,
+                    status: "ready",
                     versions: [
                       result.version,
                       ...current.versions.filter(
@@ -550,18 +589,44 @@ function App() {
       })
       .catch(() => undefined);
 
-    void listDocumentVersions(path)
-      .then((versions) => {
-        if (active) {
-          setVersionCatalog({ documentPath: path, versions });
-        }
-      })
-      .catch(() => undefined);
-
     return () => {
       active = false;
     };
   }, [path]);
+
+  useEffect(() => {
+    if (path === null) {
+      return;
+    }
+
+    let active = true;
+    void listDocumentVersions(path)
+      .then((loadedVersions) => {
+        if (active) {
+          setVersionCatalog({
+            documentPath: path,
+            status: "ready",
+            versions: loadedVersions,
+          });
+        }
+      })
+      .catch((error) => {
+        if (!active) {
+          return;
+        }
+
+        const message = errorText(error);
+        setVersionCatalog(
+          message === NOT_A_VAULT_DOCUMENT_ERROR
+            ? { documentPath: path, status: "unsupported" }
+            : { documentPath: path, status: "error", message },
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [path, versionCatalogAttempt]);
 
   useEffect(() => {
     if (!onboardingComplete) {
@@ -1130,9 +1195,11 @@ function App() {
           <VersionDiff
             documentPath={path}
             readVersion={versionReader.read}
+            readAttempt={versionReadAttempt}
             version={diffSelection.version}
             previousVersion={diffSelection.previousVersion}
             onClose={closeVersionDiff}
+            onRetry={retryVersionReads}
           />
         ) : showWelcome ? (
           <WelcomeScreen onStart={handleStart} />
@@ -1272,7 +1339,7 @@ function App() {
                   </button>
                 </span>
               )}
-              {versionsSupported && (
+              {versionsAvailable && (
                 <span
                   className="chrome-tip-wrap"
                   onMouseEnter={() => showHint("versions")}
@@ -1281,7 +1348,9 @@ function App() {
                   onBlur={hideHint}
                 >
                   <ChromeHint
-                    name="Versions"
+                    name={
+                      versionCatalogError ? "Versions unavailable" : "Versions"
+                    }
                     keys={["⌥", "⌘", "V"]}
                     className="chrome-tip-left"
                     visible={activeHint === "versions"}
@@ -1289,7 +1358,11 @@ function App() {
                   <button
                     type="button"
                     className="statusbar-toggle"
-                    aria-label={`Versions, ${versions.length}. Command Option V.`}
+                    aria-label={
+                      versionCatalogError
+                        ? "Versions unavailable. Open to retry. Command Option V."
+                        : `Versions, ${versions.length}. Command Option V.`
+                    }
                     onClick={toggleVersions}
                   >
                     <VersionsIcon className="statusbar-toggle-icon" />
@@ -1437,16 +1510,20 @@ function App() {
         </footer>
       )}
       </div>
-      {path && versionReader && versionsSupported && onboardingComplete && (
+      {path && versionReader && versionsAvailable && onboardingComplete && (
         <VersionHistory
           open={versionsOpen}
           documentPath={path}
           currentText={text}
           versions={versions}
+          catalogError={versionCatalogError}
+          readAttempt={versionReadAttempt}
           saving={versionSaving}
           saveError={versionSaveError}
           readVersion={versionReader.read}
           onSave={saveCurrentVersion}
+          onRetryCatalog={retryVersionCatalog}
+          onRetryReads={retryVersionReads}
           selectedVersionId={diffSelection?.version.id ?? null}
           onClose={() => {
             setVersionsOpen(false);

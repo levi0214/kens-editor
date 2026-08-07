@@ -14,10 +14,14 @@ interface VersionHistoryProps {
   documentPath: string;
   currentText: string;
   versions: DocumentVersion[];
+  catalogError: string | null;
+  readAttempt: number;
   saving: boolean;
   saveError: string | null;
   readVersion: (versionId: string) => Promise<string>;
   onSave: () => Promise<SaveVersionResult | null>;
+  onRetryCatalog: () => void;
+  onRetryReads: () => void;
   selectedVersionId: string | null;
   onClose: () => void;
   onSelectCurrent: () => void;
@@ -45,10 +49,14 @@ export function VersionHistory({
   documentPath,
   currentText,
   versions,
+  catalogError,
+  readAttempt,
   saving,
   saveError,
   readVersion,
   onSave,
+  onRetryCatalog,
+  onRetryReads,
   selectedVersionId,
   onClose,
   onSelectCurrent,
@@ -56,7 +64,6 @@ export function VersionHistory({
 }: VersionHistoryProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
-  const [loadAttempt, setLoadAttempt] = useState(0);
   const [counts, setCounts] = useState<{
     documentPath: string;
     versionKey: string;
@@ -72,7 +79,7 @@ export function VersionHistory({
     counts?.documentPath === documentPath && counts.versionKey === versionKey;
 
   useEffect(() => {
-    if (!open || countsAreCurrent) {
+    if (!open || catalogError || countsAreCurrent) {
       return;
     }
 
@@ -108,7 +115,16 @@ export function VersionHistory({
     return () => {
       active = false;
     };
-  }, [countsAreCurrent, documentPath, loadAttempt, open, readVersion, versionKey, versions]);
+  }, [
+    catalogError,
+    countsAreCurrent,
+    documentPath,
+    open,
+    readAttempt,
+    readVersion,
+    versionKey,
+    versions,
+  ]);
 
   const lineChanges = countsAreCurrent ? counts.lineChanges : {};
   const currentChanges = useMemo(() => {
@@ -144,8 +160,12 @@ export function VersionHistory({
 
   const retryLoad = useCallback(() => {
     setReadError(null);
-    setLoadAttempt((attempt) => attempt + 1);
-  }, []);
+    if (catalogError) {
+      onRetryCatalog();
+    } else {
+      onRetryReads();
+    }
+  }, [catalogError, onRetryCatalog, onRetryReads]);
 
   const saveVersion = useCallback(async () => {
     try {
@@ -175,7 +195,7 @@ export function VersionHistory({
         </button>
       </header>
 
-      <div className="versions-list">
+      <div className="versions-list" hidden={catalogError !== null}>
         <div
           className={`versions-current${selectedVersionId === null ? " versions-item-selected" : ""}`}
         >
@@ -257,8 +277,12 @@ export function VersionHistory({
         })}
       </div>
 
-      {readError ? (
-        <div className="versions-error" role="alert" title={readError}>
+      {catalogError || readError ? (
+        <div
+          className="versions-error"
+          role="alert"
+          title={catalogError ?? readError ?? undefined}
+        >
           <span>Could not load history</span>
           <button type="button" onClick={retryLoad}>
             Retry
