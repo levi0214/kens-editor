@@ -55,6 +55,11 @@ export function createDocumentVersionReader(
       if (!contents) {
         contents = readDocumentVersion(documentPath, versionId);
         cache.set(versionId, contents);
+        void contents.catch(() => {
+          if (cache.get(versionId) === contents) {
+            cache.delete(versionId);
+          }
+        });
       }
       return contents;
     },

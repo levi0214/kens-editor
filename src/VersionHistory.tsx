@@ -56,6 +56,7 @@ export function VersionHistory({
 }: VersionHistoryProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [counts, setCounts] = useState<{
     documentPath: string;
     versionKey: string;
@@ -107,7 +108,7 @@ export function VersionHistory({
     return () => {
       active = false;
     };
-  }, [countsAreCurrent, documentPath, open, readVersion, versionKey, versions]);
+  }, [countsAreCurrent, documentPath, loadAttempt, open, readVersion, versionKey, versions]);
 
   const lineChanges = countsAreCurrent ? counts.lineChanges : {};
   const currentChanges = useMemo(() => {
@@ -139,6 +140,11 @@ export function VersionHistory({
       setMessage(null);
       messageTimerRef.current = undefined;
     }, 1400);
+  }, []);
+
+  const retryLoad = useCallback(() => {
+    setReadError(null);
+    setLoadAttempt((attempt) => attempt + 1);
   }, []);
 
   const saveVersion = useCallback(async () => {
@@ -183,13 +189,19 @@ export function VersionHistory({
             <span
               className="versions-item-changes"
               aria-label={
-                currentChanges
-                  ? `${currentChanges.removed} lines removed and ${currentChanges.added} added compared with the latest saved version`
-                  : "Calculating line changes"
+                readError
+                  ? "Line changes unavailable"
+                  : currentChanges
+                    ? `${currentChanges.removed} lines removed and ${currentChanges.added} added compared with the latest saved version`
+                    : "Calculating line changes"
               }
             >
-              <span className="versions-item-removed">−{currentChanges?.removed ?? "…"}</span>
-              <span className="versions-item-added">+{currentChanges?.added ?? "…"}</span>
+              <span className="versions-item-removed">
+                −{readError ? "—" : currentChanges?.removed ?? "…"}
+              </span>
+              <span className="versions-item-added">
+                +{readError ? "—" : currentChanges?.added ?? "…"}
+              </span>
             </span>
           </button>
           <button
@@ -226,22 +238,35 @@ export function VersionHistory({
               <span
                 className="versions-item-changes"
                 aria-label={
-                  changes
-                    ? `${changes.removed} lines removed and ${changes.added} added compared with the previous version`
-                    : "Calculating line changes"
+                  readError
+                    ? "Line changes unavailable"
+                    : changes
+                      ? `${changes.removed} lines removed and ${changes.added} added compared with the previous version`
+                      : "Calculating line changes"
                 }
               >
-                <span className="versions-item-removed">−{changes?.removed ?? "…"}</span>
-                <span className="versions-item-added">+{changes?.added ?? "…"}</span>
+                <span className="versions-item-removed">
+                  −{readError ? "—" : changes?.removed ?? "…"}
+                </span>
+                <span className="versions-item-added">
+                  +{readError ? "—" : changes?.added ?? "…"}
+                </span>
               </span>
             </button>
           );
         })}
       </div>
 
-      {(readError || saveError) && (
-        <div className="versions-error">{readError ?? saveError}</div>
-      )}
+      {readError ? (
+        <div className="versions-error" role="alert" title={readError}>
+          <span>Could not load history</span>
+          <button type="button" onClick={retryLoad}>
+            Retry
+          </button>
+        </div>
+      ) : saveError ? (
+        <div className="versions-error" role="alert">{saveError}</div>
+      ) : null}
     </aside>
   );
 }
