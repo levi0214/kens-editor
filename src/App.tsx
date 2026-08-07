@@ -780,7 +780,7 @@ function App() {
           }),
           await MenuItem.new({
             id: "save-version",
-            text: "Save Version",
+            text: "Save Current Version",
             accelerator: "CmdOrCtrl+Alt+S",
             action: () => menuActionsRef.current.saveVersion(),
           }),

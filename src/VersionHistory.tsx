@@ -112,7 +112,7 @@ export function VersionHistory({
       const next = [result.version, ...withoutSaved];
       setVersions(next);
       onVersionsChange(next.length);
-      showMessage(result.created ? `Version ${result.version.number} saved` : "Already saved");
+      showMessage(result.created ? `V${result.version.number} saved` : "Already saved");
     } catch (saveError) {
       setError(errorText(saveError));
     } finally {
@@ -132,7 +132,6 @@ export function VersionHistory({
   return (
     <aside className="versions-sidebar" aria-label="Versions" hidden={!open}>
       <header className="versions-sidebar-header">
-        <span className="versions-sidebar-title">Versions</span>
         <button
           type="button"
           className="versions-sidebar-close"
@@ -147,12 +146,12 @@ export function VersionHistory({
         <button
           type="button"
           className="versions-save"
-          aria-label="Save version. Command Option S."
-          title="Save version · ⌥⌘S"
+          aria-label="Save current version. Command Option S."
+          title="Save current version · ⌥⌘S"
           disabled={saving || loading}
           onClick={() => void saveVersion()}
         >
-          {saving ? "Saving…" : "Save version"}
+          {saving ? "Saving…" : "Save current version"}
         </button>
         {message && (
           <span className="versions-message" role="status">
@@ -168,7 +167,7 @@ export function VersionHistory({
         {versions.map((version) => (
           <article className="versions-item" key={version.id}>
             <div className="versions-item-heading">
-              <span className="versions-item-number">Version {version.number}</span>
+              <span className="versions-item-number">V{version.number}</span>
               <time className="versions-item-time" dateTime={new Date(version.createdMs).toISOString()}>
                 {versionTime(version.createdMs)}
               </time>
