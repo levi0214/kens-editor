@@ -192,7 +192,7 @@ function collapseContext(
 export function buildDocumentDiff(
   oldText: string,
   newText: string,
-  contextLines = 4,
+  contextLines: number | null = 4,
 ): DocumentDiff {
   const parts = diffLines(oldText, newText);
   const lines: DocumentDiffLine[] = [];
@@ -253,7 +253,10 @@ export function buildDocumentDiff(
   }
 
   return {
-    lines: collapseContext(lines, Math.max(0, contextLines)),
+    lines:
+      contextLines === null
+        ? lines
+        : collapseContext(lines, Math.max(0, contextLines)),
     hasChanges,
   };
 }

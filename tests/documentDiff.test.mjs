@@ -67,3 +67,19 @@ test("long unchanged sections collapse around changes", () => {
   assert.equal(result.lines.some((line) => line.text === "line 11"), true);
   assert.equal(result.lines.some((line) => line.text === "line 14"), true);
 });
+
+test("full-document diffs keep unchanged sections", () => {
+  const oldLines = Array.from({ length: 24 }, (_, index) => `line ${index + 1}`);
+  const newLines = [...oldLines];
+  newLines[11] = "changed line";
+
+  const result = buildDocumentDiff(
+    `${oldLines.join("\n")}\n`,
+    `${newLines.join("\n")}\n`,
+    null,
+  );
+
+  assert.equal(result.lines.some((line) => line.kind === "separator"), false);
+  assert.equal(result.lines.some((line) => line.text === "line 1"), true);
+  assert.equal(result.lines.some((line) => line.text === "line 24"), true);
+});
