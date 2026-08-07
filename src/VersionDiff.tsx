@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   buildDocumentDiff,
   splitDocumentDiffLines,
@@ -56,12 +56,19 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function diffLineKey(line: DocumentDiffLine): string | null {
+  if (line.kind === "separator") {
+    return null;
+  }
+  return `${line.kind}:${line.oldNumber ?? ""}:${line.newNumber ?? ""}`;
+}
+
 function DiffLine({
   line,
   onExpand,
 }: {
   line: DocumentDiffLine;
-  onExpand: () => void;
+  onExpand: (button: HTMLButtonElement) => void;
 }) {
   if (line.kind === "separator") {
     return (
@@ -69,7 +76,7 @@ function DiffLine({
         type="button"
         className="version-diff-separator"
         aria-label="Show full document"
-        onClick={onExpand}
+        onClick={(event) => onExpand(event.currentTarget)}
       >
         ···
       </button>
@@ -77,7 +84,10 @@ function DiffLine({
   }
 
   return (
-    <div className={`version-diff-line version-diff-line-${line.kind}`}>
+    <div
+      className={`version-diff-line version-diff-line-${line.kind}`}
+      data-diff-line-key={diffLineKey(line)}
+    >
       <span className="version-diff-line-text">
         {line.spans
           ? line.spans.map((span, index) => (
@@ -104,6 +114,11 @@ export function VersionDiff({
   const [loadState, setLoadState] = useState<DiffLoadState | null>(null);
   const [showFullDocument, setShowFullDocument] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const pendingAnchorRef = useRef<{
+    key: string | null;
+    top: number;
+    view: "unified" | "split";
+  } | null>(null);
   const previousVersionId = previousVersion?.id ?? null;
   const currentLoadState = loadStateMatches(
     loadState,
@@ -162,7 +177,7 @@ export function VersionDiff({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = 0;
     }
-  }, [showFullDocument, version.id]);
+  }, [version.id]);
 
   const diff = useMemo(
     () =>
@@ -179,6 +194,41 @@ export function VersionDiff({
     () => (diff === null ? [] : splitDocumentDiffLines(diff.lines)),
     [diff],
   );
+  const expandFrom = useCallback(
+    (button: HTMLButtonElement, view: "unified" | "split") => {
+      const previous = button.previousElementSibling;
+      const anchor = previous?.matches("[data-diff-line-key]")
+        ? (previous as HTMLElement)
+        : previous?.querySelector<HTMLElement>("[data-diff-line-key]") ?? null;
+      pendingAnchorRef.current = {
+        key: anchor?.dataset.diffLineKey ?? null,
+        top: (anchor ?? button).getBoundingClientRect().top,
+        view,
+      };
+      setShowFullDocument(true);
+    },
+    [],
+  );
+
+  useLayoutEffect(() => {
+    const pending = pendingAnchorRef.current;
+    const scroll = scrollRef.current;
+    if (!showFullDocument || !pending || !scroll) {
+      return;
+    }
+
+    const view = scroll.querySelector(`.version-diff-${pending.view}`);
+    const lines = Array.from(
+      view?.querySelectorAll<HTMLElement>("[data-diff-line-key]") ?? [],
+    );
+    const target = pending.key
+      ? lines.find((line) => line.dataset.diffLineKey === pending.key)
+      : lines[0];
+    if (target) {
+      scroll.scrollTop += target.getBoundingClientRect().top - pending.top;
+    }
+    pendingAnchorRef.current = null;
+  }, [diff, showFullDocument]);
 
   return (
     <section
@@ -206,7 +256,13 @@ export function VersionDiff({
             <button
               type="button"
               className="version-diff-view-toggle"
-              onClick={() => setShowFullDocument(false)}
+              onClick={() => {
+                pendingAnchorRef.current = null;
+                setShowFullDocument(false);
+                if (scrollRef.current) {
+                  scrollRef.current.scrollTop = 0;
+                }
+              }}
             >
               Changes only
             </button>
@@ -238,7 +294,7 @@ export function VersionDiff({
                 {diff.lines.map((line, index) => (
                   <DiffLine
                     line={line}
-                    onExpand={() => setShowFullDocument(true)}
+                    onExpand={(button) => expandFrom(button, "unified")}
                     key={index}
                   />
                 ))}
@@ -250,7 +306,9 @@ export function VersionDiff({
                       type="button"
                       className="version-diff-split-separator"
                       aria-label="Show full document"
-                      onClick={() => setShowFullDocument(true)}
+                      onClick={(event) =>
+                        expandFrom(event.currentTarget, "split")
+                      }
                       key={index}
                     >
                       ···
