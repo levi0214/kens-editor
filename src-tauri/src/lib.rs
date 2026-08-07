@@ -177,12 +177,16 @@ fn vault_file_name(path: &Path) -> Result<String, String> {
 }
 
 fn vault_document_stem(path: &Path) -> Result<String, String> {
+    let vault = ensure_vault_exists()?;
+    vault_document_stem_in_dir(path, &vault)
+}
+
+fn vault_document_stem_in_dir(path: &Path, vault: &Path) -> Result<String, String> {
     if !is_vault_text_file(path) {
         return Err("Not a vault document".to_string());
     }
 
-    let vault = ensure_vault_exists()?;
-    let canonical_vault = fs::canonicalize(&vault).map_err(|error| error.to_string())?;
+    let canonical_vault = fs::canonicalize(vault).map_err(|error| error.to_string())?;
     let canonical_path = fs::canonicalize(path).map_err(|error| error.to_string())?;
 
     if canonical_path.parent() != Some(canonical_vault.as_path()) {
@@ -582,31 +586,37 @@ fn create_vault_document() -> Result<String, String> {
 #[tauri::command]
 fn delete_vault_document(path: String) -> Result<(), String> {
     let path = PathBuf::from(path);
-
-    if !is_vault_path(&path)? {
-        return Err("Not a vault document".to_string());
-    }
-
-    let name = vault_file_name(&path)?;
     let dir = ensure_vault_exists()?;
-    let images_dir = document_images_dir(&path)?;
-    let versions_dir = document_versions_dir(&path)?;
+    delete_vault_document_from_dir(&path, &dir, |target| {
+        trash::delete(target).map_err(|error| error.to_string())
+    })
+}
+
+fn delete_vault_document_from_dir(
+    path: &Path,
+    dir: &Path,
+    mut delete: impl FnMut(&Path) -> Result<(), String>,
+) -> Result<(), String> {
+    let stem = vault_document_stem_in_dir(path, dir)?;
+    let name = vault_file_name(path)?;
+    let images_dir = dir.join(ATTACHMENTS_DIR_NAME).join(&stem);
+    let versions_dir = dir.join(VERSIONS_DIR_NAME).join(stem);
 
     if images_dir.is_dir() {
-        trash::delete(&images_dir).map_err(|error| error.to_string())?;
+        delete(&images_dir)?;
     }
 
     if versions_dir.is_dir() {
-        trash::delete(&versions_dir).map_err(|error| error.to_string())?;
+        delete(&versions_dir)?;
     }
 
     if path.exists() {
-        trash::delete(&path).map_err(|error| error.to_string())?;
+        delete(path)?;
     }
 
-    let mut pins = read_pins(&dir)?;
+    let mut pins = read_pins(dir)?;
     if pins.remove(&name) {
-        write_pins(&dir, &pins)?;
+        write_pins(dir, &pins)?;
     }
 
     Ok(())
@@ -897,5 +907,43 @@ mod tests {
                 "Invalid version"
             );
         }
+    }
+
+    #[test]
+    fn rejects_documents_outside_the_vault() {
+        let vault = TestDir::new("vault");
+        let outside = TestDir::new("outside-vault");
+        let document = outside.path().join("note.txt");
+        fs::write(&document, "text").unwrap();
+
+        let error = delete_vault_document_from_dir(&document, vault.path(), |_| {
+            panic!("an outside document must not be deleted")
+        })
+        .unwrap_err();
+
+        assert_eq!(error, "Not a vault document");
+        assert!(document.exists());
+    }
+
+    #[test]
+    fn deleting_a_document_removes_its_versions() {
+        let vault = TestDir::new("delete-version");
+        let document = vault.path().join("note.txt");
+        let versions = vault.path().join(VERSIONS_DIR_NAME).join("note");
+        fs::write(&document, "current").unwrap();
+        fs::create_dir_all(&versions).unwrap();
+        fs::write(versions.join("2026-08-07_120000_001.txt"), "saved").unwrap();
+
+        delete_vault_document_from_dir(&document, vault.path(), |target| {
+            if target.is_dir() {
+                fs::remove_dir_all(target).map_err(|error| error.to_string())
+            } else {
+                fs::remove_file(target).map_err(|error| error.to_string())
+            }
+        })
+        .unwrap();
+
+        assert!(!document.exists());
+        assert!(!versions.exists());
     }
 }
