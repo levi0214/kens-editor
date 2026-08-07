@@ -1347,6 +1347,7 @@ function App() {
             setVersionsOpen(false);
             closeVersionDiff();
           }}
+          onSelectCurrent={closeVersionDiff}
           onSelectVersion={setDiffVersion}
           onVersionsChange={setVersionCount}
         />

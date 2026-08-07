@@ -1,7 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  countChangedLines,
+  type DocumentLineChanges,
+} from "./documentDiff";
 import { CloseIcon } from "./statusBarIcons";
 import {
   listDocumentVersions,
+  readDocumentVersion,
   saveDocumentVersion,
   type DocumentVersion,
 } from "./versions";
@@ -14,6 +19,7 @@ interface VersionHistoryProps {
   saveRequest: number;
   selectedVersionId: string | null;
   onClose: () => void;
+  onSelectCurrent: () => void;
   onSelectVersion: (version: DocumentVersion) => void;
   onVersionsChange: (count: number) => void;
 }
@@ -39,6 +45,7 @@ export function VersionHistory({
   saveRequest,
   selectedVersionId,
   onClose,
+  onSelectCurrent,
   onSelectVersion,
   onVersionsChange,
 }: VersionHistoryProps) {
@@ -47,6 +54,8 @@ export function VersionHistory({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lineChanges, setLineChanges] = useState<Record<string, DocumentLineChanges>>({});
+  const [latestSavedText, setLatestSavedText] = useState<string | null>(null);
   const messageTimerRef = useRef<number | undefined>(undefined);
   const handledSaveRequestRef = useRef(saveRequest);
 
@@ -70,6 +79,44 @@ export function VersionHistory({
       active = false;
     };
   }, [documentPath, onVersionsChange]);
+
+  useEffect(() => {
+    let active = true;
+    setLineChanges({});
+    setLatestSavedText(null);
+
+    const chronological = [...versions].reverse();
+    void Promise.all(
+      chronological.map((version) => readDocumentVersion(documentPath, version.id)),
+    )
+      .then((contents) => {
+        if (!active) {
+          return;
+        }
+
+        let previous = "";
+        const next: Record<string, DocumentLineChanges> = {};
+        chronological.forEach((version, index) => {
+          next[version.id] = countChangedLines(previous, contents[index]);
+          previous = contents[index];
+        });
+        setLineChanges(next);
+        setLatestSavedText(previous);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, [documentPath, versions]);
+
+  const currentChanges = useMemo(
+    () =>
+      latestSavedText === null
+        ? null
+        : countChangedLines(latestSavedText, currentText),
+    [currentText, latestSavedText],
+  );
 
   useEffect(
     () => () => {
@@ -105,7 +152,7 @@ export function VersionHistory({
       const next = [result.version, ...withoutSaved];
       setVersions(next);
       onVersionsChange(next.length);
-      showMessage(result.created ? `V${result.version.number} saved` : "Already saved");
+      showMessage(result.created ? "Saved" : "No changes");
     } catch (saveError) {
       setError(errorText(saveError));
     } finally {
@@ -135,45 +182,73 @@ export function VersionHistory({
         </button>
       </header>
 
-      <div className="versions-sidebar-save-row">
-        <button
-          type="button"
-          className="versions-save"
-          aria-label="Save current version. Command Option S."
-          title="Save current version · ⌥⌘S"
-          disabled={saving || loading}
-          onClick={() => void saveVersion()}
-        >
-          {saving ? "Saving…" : "Save current version"}
-        </button>
-        {message && (
-          <span className="versions-message" role="status">
-            {message}
-          </span>
-        )}
-      </div>
-
       <div className="versions-list">
+        <div
+          className={`versions-current${selectedVersionId === null ? " versions-item-selected" : ""}`}
+        >
+          <button
+            type="button"
+            className="versions-current-main"
+            aria-pressed={selectedVersionId === null}
+            onClick={onSelectCurrent}
+          >
+            <span className="versions-item-number">Current</span>
+            <span
+              className="versions-item-changes"
+              aria-label={
+                currentChanges
+                  ? `${currentChanges.added} lines added and ${currentChanges.removed} removed compared with the latest saved version`
+                  : "Calculating line changes"
+              }
+            >
+              <span className="versions-item-added">+{currentChanges?.added ?? "…"}</span>
+              <span className="versions-item-removed">−{currentChanges?.removed ?? "…"}</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            className="versions-current-save"
+            aria-label="Save current version. Command Option S."
+            title="Save current version · ⌥⌘S"
+            disabled={saving || loading}
+            onClick={() => void saveVersion()}
+          >
+            {saving ? "Saving…" : message ?? "Save"}
+          </button>
+        </div>
         {!loading && versions.length === 0 && (
           <p className="versions-empty">No saved versions yet.</p>
         )}
-        {versions.map((version) => (
-          <button
-            type="button"
-            className={`versions-item${selectedVersionId === version.id ? " versions-item-selected" : ""}`}
-            aria-pressed={selectedVersionId === version.id}
-            key={version.id}
-            onClick={() => onSelectVersion(version)}
-          >
-            <div className="versions-item-heading">
-              <span className="versions-item-number">V{version.number}</span>
-              <time className="versions-item-time" dateTime={new Date(version.createdMs).toISOString()}>
-                {versionTime(version.createdMs)}
-              </time>
-            </div>
-            <p className="versions-item-preview">{version.preview}</p>
-          </button>
-        ))}
+        {versions.map((version) => {
+          const changes = lineChanges[version.id];
+          return (
+            <button
+              type="button"
+              className={`versions-item${selectedVersionId === version.id ? " versions-item-selected" : ""}`}
+              aria-pressed={selectedVersionId === version.id}
+              key={version.id}
+              onClick={() => onSelectVersion(version)}
+            >
+              <span className="versions-item-heading">
+                <span className="versions-item-number">V{version.number}</span>
+                <time className="versions-item-time" dateTime={new Date(version.createdMs).toISOString()}>
+                  {versionTime(version.createdMs)}
+                </time>
+              </span>
+              <span
+                className="versions-item-changes"
+                aria-label={
+                  changes
+                    ? `${changes.added} lines added and ${changes.removed} removed compared with the previous version`
+                    : "Calculating line changes"
+                }
+              >
+                <span className="versions-item-added">+{changes?.added ?? "…"}</span>
+                <span className="versions-item-removed">−{changes?.removed ?? "…"}</span>
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {error && <div className="versions-error">{error}</div>}
