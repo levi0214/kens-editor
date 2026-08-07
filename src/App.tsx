@@ -77,6 +77,7 @@ import { useUnmarkdown } from "./useUnmarkdown";
 import { indentSelectedLines, outdentSelectedLines } from "./indent";
 import { VersionHistory } from "./VersionHistory";
 import { listDocumentVersions } from "./versions";
+import { useVersionSidebarWindow } from "./useVersionSidebarWindow";
 import "./App.css";
 
 const NEW_DOC_PULSE_MS = 180;
@@ -143,6 +144,7 @@ function App() {
     chromeHovered,
   );
   useWindowFullscreen();
+  useVersionSidebarWindow(versionsOpen);
 
   const showHint = useCallback((name: string) => {
     if (hintTimerRef.current !== undefined) {
