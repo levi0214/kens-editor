@@ -14,6 +14,43 @@ interface VersionDiffProps {
   onClose: () => void;
 }
 
+type DiffLoadState =
+  | {
+      documentPath: string;
+      previousVersionId: string | null;
+      versionId: string;
+      status: "loading";
+    }
+  | {
+      documentPath: string;
+      previousVersionId: string | null;
+      versionId: string;
+      status: "loaded";
+      previous: string;
+      selected: string;
+    }
+  | {
+      documentPath: string;
+      previousVersionId: string | null;
+      versionId: string;
+      status: "error";
+      message: string;
+    };
+
+function loadStateMatches(
+  state: DiffLoadState | null,
+  documentPath: string,
+  previousVersionId: string | null,
+  versionId: string,
+): state is DiffLoadState {
+  return (
+    state !== null &&
+    state.documentPath === documentPath &&
+    state.previousVersionId === previousVersionId &&
+    state.versionId === versionId
+  );
+}
+
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -62,37 +99,62 @@ export function VersionDiff({
   previousVersion,
   onClose,
 }: VersionDiffProps) {
-  const [texts, setTexts] = useState<{ previous: string; selected: string } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [loadState, setLoadState] = useState<DiffLoadState | null>(null);
   const [showFullDocument, setShowFullDocument] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const previousVersionId = previousVersion?.id ?? null;
+  const currentLoadState = loadStateMatches(
+    loadState,
+    documentPath,
+    previousVersionId,
+    version.id,
+  )
+    ? loadState
+    : null;
 
   useEffect(() => {
     let active = true;
-    setTexts(null);
-    setError(null);
+    setLoadState({
+      documentPath,
+      previousVersionId,
+      versionId: version.id,
+      status: "loading",
+    });
 
     void Promise.all([
-      previousVersion
-        ? readDocumentVersion(documentPath, previousVersion.id)
+      previousVersionId
+        ? readDocumentVersion(documentPath, previousVersionId)
         : Promise.resolve(""),
       readDocumentVersion(documentPath, version.id),
     ])
       .then(([previous, selected]) => {
         if (active) {
-          setTexts({ previous, selected });
+          setLoadState({
+            documentPath,
+            previousVersionId,
+            versionId: version.id,
+            status: "loaded",
+            previous,
+            selected,
+          });
         }
       })
       .catch((readError) => {
         if (active) {
-          setError(errorText(readError));
+          setLoadState({
+            documentPath,
+            previousVersionId,
+            versionId: version.id,
+            status: "error",
+            message: errorText(readError),
+          });
         }
       });
 
     return () => {
       active = false;
     };
-  }, [documentPath, previousVersion, version.id]);
+  }, [documentPath, previousVersionId, version.id]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -102,14 +164,14 @@ export function VersionDiff({
 
   const diff = useMemo(
     () =>
-      texts === null
+      currentLoadState?.status !== "loaded"
         ? null
         : buildDocumentDiff(
-            texts.previous,
-            texts.selected,
+            currentLoadState.previous,
+            currentLoadState.selected,
             showFullDocument ? null : 4,
           ),
-    [showFullDocument, texts],
+    [currentLoadState, showFullDocument],
   );
   const splitRows = useMemo(
     () => (diff === null ? [] : splitDocumentDiffLines(diff.lines)),
@@ -160,8 +222,10 @@ export function VersionDiff({
 
       <div className="version-diff-scroll" ref={scrollRef}>
         <div className="version-diff-content">
-          {error ? (
-            <p className="version-diff-state version-diff-state-error">{error}</p>
+          {currentLoadState?.status === "error" ? (
+            <p className="version-diff-state version-diff-state-error">
+              {currentLoadState.message}
+            </p>
           ) : diff === null ? (
             <p className="version-diff-state">Loading…</p>
           ) : !diff.hasChanges ? (
