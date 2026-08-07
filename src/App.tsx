@@ -76,7 +76,8 @@ import { UnmarkdownConfirm } from "./UnmarkdownConfirm";
 import { useUnmarkdown } from "./useUnmarkdown";
 import { indentSelectedLines, outdentSelectedLines } from "./indent";
 import { VersionHistory } from "./VersionHistory";
-import { listDocumentVersions } from "./versions";
+import { VersionDiff } from "./VersionDiff";
+import { listDocumentVersions, type DocumentVersion } from "./versions";
 import { useVersionSidebarWindow } from "./useVersionSidebarWindow";
 import "./App.css";
 
@@ -129,6 +130,7 @@ function App() {
   const [versionsSupported, setVersionsSupported] = useState(false);
   const [versionCount, setVersionCount] = useState(0);
   const [saveVersionRequest, setSaveVersionRequest] = useState(0);
+  const [diffVersion, setDiffVersion] = useState<DocumentVersion | null>(null);
   const [imagesSupported, setImagesSupported] = useState(false);
   const [imageCount, setImageCount] = useState(0);
   const [imageDragging, setImageDragging] = useState(false);
@@ -149,6 +151,12 @@ function App() {
   useWindowFullscreen();
   useVersionSidebarWindow(versionsOpen);
 
+  useEffect(() => {
+    if (!versionsOpen) {
+      setDiffVersion(null);
+    }
+  }, [versionsOpen]);
+
   const showHint = useCallback((name: string) => {
     if (hintTimerRef.current !== undefined) {
       window.clearTimeout(hintTimerRef.current);
@@ -166,6 +174,11 @@ function App() {
       hintTimerRef.current = undefined;
     }
     setActiveHint(null);
+  }, []);
+
+  const closeVersionDiff = useCallback(() => {
+    setDiffVersion(null);
+    requestAnimationFrame(() => focusEditor(editorRef.current));
   }, []);
 
   const commitFontSize = useCallback((pick: (current: FontSize) => FontSize) => {
@@ -338,13 +351,13 @@ function App() {
     hideHint();
     setPickerOpen(false);
     setImageTrayOpen(false);
-    setVersionsOpen((open) => {
-      if (open) {
-        focusEditor(editorRef.current);
-      }
-      return !open;
-    });
-  }, [hideHint, versionsSupported]);
+    if (versionsOpen) {
+      setVersionsOpen(false);
+      closeVersionDiff();
+    } else {
+      setVersionsOpen(true);
+    }
+  }, [closeVersionDiff, hideHint, versionsOpen, versionsSupported]);
 
   const requestSaveVersion = useCallback(() => {
     if (!versionsSupported || !path || !ready || !onboardingComplete) {
@@ -839,6 +852,17 @@ function App() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && versionsOpen) {
+        event.preventDefault();
+        if (diffVersion) {
+          closeVersionDiff();
+        } else {
+          setVersionsOpen(false);
+          focusEditor(editorRef.current);
+        }
+        return;
+      }
+
       if (showWelcome) {
         return;
       }
@@ -930,7 +954,9 @@ function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
     bumpChrome,
+    closeVersionDiff,
     decreaseFontSize,
+    diffVersion,
     flipDocument,
     flush,
     increaseFontSize,
@@ -952,6 +978,7 @@ function App() {
     cycleTheme,
     showWelcome,
     unmarkdownConfirmOpen,
+    versionsOpen,
   ]);
 
   return (
@@ -998,7 +1025,14 @@ function App() {
       <div
         className={`editor-shell${imageDragging ? " editor-shell-image-drag" : ""}`}
       >
-        {showWelcome ? (
+        {diffVersion && path ? (
+          <VersionDiff
+            documentPath={path}
+            version={diffVersion}
+            currentText={text}
+            onClose={closeVersionDiff}
+          />
+        ) : showWelcome ? (
           <WelcomeScreen onStart={handleStart} />
         ) : (
           <textarea
@@ -1308,10 +1342,12 @@ function App() {
           currentText={text}
           beforeSave={flush}
           saveRequest={saveVersionRequest}
+          selectedVersionId={diffVersion?.id ?? null}
           onClose={() => {
             setVersionsOpen(false);
-            focusEditor(editorRef.current);
+            closeVersionDiff();
           }}
+          onSelectVersion={setDiffVersion}
           onVersionsChange={setVersionCount}
         />
       )}

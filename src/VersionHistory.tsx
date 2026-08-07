@@ -12,7 +12,9 @@ interface VersionHistoryProps {
   currentText: string;
   beforeSave: () => Promise<void>;
   saveRequest: number;
+  selectedVersionId: string | null;
   onClose: () => void;
+  onSelectVersion: (version: DocumentVersion) => void;
   onVersionsChange: (count: number) => void;
 }
 
@@ -35,7 +37,9 @@ export function VersionHistory({
   currentText,
   beforeSave,
   saveRequest,
+  selectedVersionId,
   onClose,
+  onSelectVersion,
   onVersionsChange,
 }: VersionHistoryProps) {
   const [versions, setVersions] = useState<DocumentVersion[]>([]);
@@ -66,17 +70,6 @@ export function VersionHistory({
       active = false;
     };
   }, [documentPath, onVersionsChange]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (open && event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose, open]);
 
   useEffect(
     () => () => {
@@ -165,7 +158,13 @@ export function VersionHistory({
           <p className="versions-empty">No saved versions yet.</p>
         )}
         {versions.map((version) => (
-          <article className="versions-item" key={version.id}>
+          <button
+            type="button"
+            className={`versions-item${selectedVersionId === version.id ? " versions-item-selected" : ""}`}
+            aria-pressed={selectedVersionId === version.id}
+            key={version.id}
+            onClick={() => onSelectVersion(version)}
+          >
             <div className="versions-item-heading">
               <span className="versions-item-number">V{version.number}</span>
               <time className="versions-item-time" dateTime={new Date(version.createdMs).toISOString()}>
@@ -173,7 +172,7 @@ export function VersionHistory({
               </time>
             </div>
             <p className="versions-item-preview">{version.preview}</p>
-          </article>
+          </button>
         ))}
       </div>
 
