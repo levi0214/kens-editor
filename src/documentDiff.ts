@@ -45,6 +45,10 @@ function splitLines(value: string): string[] {
   return lines;
 }
 
+function normalizeForDiff(value: string): string {
+  return value === "" || value.endsWith("\n") ? value : `${value}\n`;
+}
+
 export function countChangedLines(
   oldText: string,
   newText: string,
@@ -52,7 +56,10 @@ export function countChangedLines(
   let added = 0;
   let removed = 0;
 
-  for (const part of diffLines(oldText, newText)) {
+  for (const part of diffLines(
+    normalizeForDiff(oldText),
+    normalizeForDiff(newText),
+  )) {
     const lineCount = splitLines(part.value).length;
     if (part.added) {
       added += lineCount;
@@ -194,7 +201,7 @@ export function buildDocumentDiff(
   newText: string,
   contextLines: number | null = 4,
 ): DocumentDiff {
-  const parts = diffLines(oldText, newText);
+  const parts = diffLines(normalizeForDiff(oldText), normalizeForDiff(newText));
   const lines: DocumentDiffLine[] = [];
   let oldNumber = 1;
   let newNumber = 1;

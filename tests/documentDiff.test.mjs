@@ -24,6 +24,24 @@ test("unchanged documents have no displayed lines", () => {
   });
 });
 
+test("a final newline is not a visible change", () => {
+  assert.deepEqual(countChangedLines("same", "same\n"), {
+    added: 0,
+    removed: 0,
+  });
+  assert.deepEqual(buildDocumentDiff("same", "same\n"), {
+    lines: [],
+    hasChanges: false,
+  });
+});
+
+test("a trailing blank line remains a visible change", () => {
+  assert.deepEqual(countChangedLines("same\n", "same\n\n"), {
+    added: 1,
+    removed: 0,
+  });
+});
+
 test("a changed line includes word-level highlights", () => {
   const result = buildDocumentDiff("the old ending\n", "the new ending\n");
 
