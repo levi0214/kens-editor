@@ -5,10 +5,11 @@ import {
   type DocumentDiffLine,
 } from "./documentDiff";
 import { CloseIcon } from "./statusBarIcons";
-import { readDocumentVersion, type DocumentVersion } from "./versions";
+import { type DocumentVersion } from "./versions";
 
 interface VersionDiffProps {
   documentPath: string;
+  readVersion: (versionId: string) => Promise<string>;
   version: DocumentVersion;
   previousVersion: DocumentVersion | null;
   onClose: () => void;
@@ -95,6 +96,7 @@ function DiffLine({
 
 export function VersionDiff({
   documentPath,
+  readVersion,
   version,
   previousVersion,
   onClose,
@@ -123,9 +125,9 @@ export function VersionDiff({
 
     void Promise.all([
       previousVersionId
-        ? readDocumentVersion(documentPath, previousVersionId)
+        ? readVersion(previousVersionId)
         : Promise.resolve(""),
-      readDocumentVersion(documentPath, version.id),
+      readVersion(version.id),
     ])
       .then(([previous, selected]) => {
         if (active) {
@@ -154,7 +156,7 @@ export function VersionDiff({
     return () => {
       active = false;
     };
-  }, [documentPath, previousVersionId, version.id]);
+  }, [documentPath, previousVersionId, readVersion, version.id]);
 
   useEffect(() => {
     if (scrollRef.current) {

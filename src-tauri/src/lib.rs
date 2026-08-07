@@ -364,7 +364,6 @@ struct DocumentVersion {
     id: String,
     number: usize,
     created_ms: u64,
-    preview: String,
 }
 
 #[derive(serde::Serialize)]
@@ -391,7 +390,6 @@ fn read_document_versions(dir: &Path) -> Result<Vec<DocumentVersion>, String> {
         versions.push(DocumentVersion {
             number: 0,
             created_ms: version_created_ms(&id).unwrap_or(modified_ms(&path)?),
-            preview: file_preview(&path)?,
             id,
         });
     }
@@ -453,7 +451,6 @@ fn save_document_version(
     let version = DocumentVersion {
         number: versions.len() + 1,
         created_ms: version_created_ms(&id).unwrap_or(modified_ms(&path)?),
-        preview: preview_from_text(&contents),
         id,
     };
 

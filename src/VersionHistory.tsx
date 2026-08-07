@@ -5,18 +5,19 @@ import {
 } from "./documentDiff";
 import { CloseIcon } from "./statusBarIcons";
 import {
-  listDocumentVersions,
-  readDocumentVersion,
-  saveDocumentVersion,
   type DocumentVersion,
+  type SaveVersionResult,
 } from "./versions";
 
 interface VersionHistoryProps {
   open: boolean;
   documentPath: string;
   currentText: string;
-  beforeSave: () => Promise<void>;
-  saveRequest: number;
+  versions: DocumentVersion[];
+  saving: boolean;
+  saveError: string | null;
+  readVersion: (versionId: string) => Promise<string>;
+  onSave: () => Promise<SaveVersionResult | null>;
   selectedVersionId: string | null;
   onClose: () => void;
   onSelectCurrent: () => void;
@@ -24,7 +25,6 @@ interface VersionHistoryProps {
     version: DocumentVersion,
     previousVersion: DocumentVersion | null,
   ) => void;
-  onVersionsChange: (count: number) => void;
 }
 
 function errorText(error: unknown): string {
@@ -44,82 +44,78 @@ export function VersionHistory({
   open,
   documentPath,
   currentText,
-  beforeSave,
-  saveRequest,
+  versions,
+  saving,
+  saveError,
+  readVersion,
+  onSave,
   selectedVersionId,
   onClose,
   onSelectCurrent,
   onSelectVersion,
-  onVersionsChange,
 }: VersionHistoryProps) {
-  const [versions, setVersions] = useState<DocumentVersion[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [lineChanges, setLineChanges] = useState<Record<string, DocumentLineChanges>>({});
-  const [latestSavedText, setLatestSavedText] = useState<string | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
+  const [counts, setCounts] = useState<{
+    documentPath: string;
+    versionKey: string;
+    lineChanges: Record<string, DocumentLineChanges>;
+    latestSavedText: string;
+  } | null>(null);
   const messageTimerRef = useRef<number | undefined>(undefined);
-  const handledSaveRequestRef = useRef(saveRequest);
+  const versionKey = useMemo(
+    () => versions.map((version) => version.id).join("\n"),
+    [versions],
+  );
+  const countsAreCurrent =
+    counts?.documentPath === documentPath && counts.versionKey === versionKey;
 
   useEffect(() => {
-    let active = true;
-    void listDocumentVersions(documentPath)
-      .then((items) => {
-        if (active) {
-          setVersions(items);
-          onVersionsChange(items.length);
-          setLoading(false);
-        }
-      })
-      .catch((loadError) => {
-        if (active) {
-          setError(errorText(loadError));
-          setLoading(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [documentPath, onVersionsChange]);
+    if (!open || countsAreCurrent) {
+      return;
+    }
 
-  useEffect(() => {
     let active = true;
-    setLineChanges({});
-    setLatestSavedText(null);
-
+    setReadError(null);
     const chronological = [...versions].reverse();
-    void Promise.all(
-      chronological.map((version) => readDocumentVersion(documentPath, version.id)),
-    )
+
+    void Promise.all(chronological.map((version) => readVersion(version.id)))
       .then((contents) => {
         if (!active) {
           return;
         }
 
         let previous = "";
-        const next: Record<string, DocumentLineChanges> = {};
+        const lineChanges: Record<string, DocumentLineChanges> = {};
         chronological.forEach((version, index) => {
-          next[version.id] = countChangedLines(previous, contents[index]);
+          lineChanges[version.id] = countChangedLines(previous, contents[index]);
           previous = contents[index];
         });
-        setLineChanges(next);
-        setLatestSavedText(previous);
+        setCounts({
+          documentPath,
+          versionKey,
+          lineChanges,
+          latestSavedText: previous,
+        });
       })
-      .catch(() => undefined);
+      .catch((loadError) => {
+        if (active) {
+          setReadError(errorText(loadError));
+        }
+      });
 
     return () => {
       active = false;
     };
-  }, [documentPath, versions]);
+  }, [countsAreCurrent, documentPath, open, readVersion, versionKey, versions]);
 
-  const currentChanges = useMemo(
-    () =>
-      latestSavedText === null
-        ? null
-        : countChangedLines(latestSavedText, currentText),
-    [currentText, latestSavedText],
-  );
+  const lineChanges = countsAreCurrent ? counts.lineChanges : {};
+  const currentChanges = useMemo(() => {
+    if (!open || !countsAreCurrent) {
+      return null;
+    }
+    return countChangedLines(counts.latestSavedText, currentText);
+  }, [counts, countsAreCurrent, currentText, open]);
 
   useEffect(
     () => () => {
@@ -142,38 +138,22 @@ export function VersionHistory({
   }, []);
 
   const saveVersion = useCallback(async () => {
-    if (saving) {
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
     try {
-      await beforeSave();
-      const result = await saveDocumentVersion(documentPath, currentText);
-      const withoutSaved = versions.filter((item) => item.id !== result.version.id);
-      const next = [result.version, ...withoutSaved];
-      setVersions(next);
-      onVersionsChange(next.length);
-      showMessage(result.created ? "Saved" : "No changes");
-    } catch (saveError) {
-      setError(errorText(saveError));
-    } finally {
-      setSaving(false);
+      const result = await onSave();
+      if (result) {
+        showMessage(result.created ? "Saved" : "No changes");
+      }
+    } catch {
+      // App owns the save error so the shortcut and sidebar share one state.
     }
-  }, [beforeSave, currentText, documentPath, onVersionsChange, saving, showMessage, versions]);
+  }, [onSave, showMessage]);
 
-  useEffect(() => {
-    if (saveRequest === handledSaveRequestRef.current) {
-      return;
-    }
-
-    handledSaveRequestRef.current = saveRequest;
-    void saveVersion();
-  }, [saveRequest, saveVersion]);
+  if (!open) {
+    return null;
+  }
 
   return (
-    <aside className="versions-sidebar" aria-label="Versions" hidden={!open}>
+    <aside className="versions-sidebar" aria-label="Versions">
       <header className="versions-sidebar-header">
         <button
           type="button"
@@ -213,13 +193,13 @@ export function VersionHistory({
             className="versions-current-save"
             aria-label="Save current version. Command Option S."
             title="Save current version · ⌥⌘S"
-            disabled={saving || loading}
+            disabled={saving}
             onClick={() => void saveVersion()}
           >
             {saving ? "Saving…" : message ?? "Save"}
           </button>
         </div>
-        {!loading && versions.length === 0 && (
+        {versions.length === 0 && (
           <p className="versions-empty">No saved versions yet.</p>
         )}
         {versions.map((version, index) => {
@@ -255,7 +235,9 @@ export function VersionHistory({
         })}
       </div>
 
-      {error && <div className="versions-error">{error}</div>}
+      {(readError || saveError) && (
+        <div className="versions-error">{readError ?? saveError}</div>
+      )}
     </aside>
   );
 }

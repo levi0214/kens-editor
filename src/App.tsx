@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DocumentPicker } from "./DocumentPicker";
 import { ImageTray } from "./ImageTray";
 import { flipDirection } from "./documentNav";
@@ -77,7 +77,13 @@ import { useUnmarkdown } from "./useUnmarkdown";
 import { indentSelectedLines, outdentSelectedLines } from "./indent";
 import { VersionHistory } from "./VersionHistory";
 import { VersionDiff } from "./VersionDiff";
-import { listDocumentVersions, type DocumentVersion } from "./versions";
+import {
+  createDocumentVersionReader,
+  listDocumentVersions,
+  saveDocumentVersion,
+  type DocumentVersion,
+  type SaveVersionResult,
+} from "./versions";
 import { useVersionSidebarWindow } from "./useVersionSidebarWindow";
 import "./App.css";
 
@@ -100,6 +106,10 @@ function startWindowDrag(event: React.MouseEvent<HTMLElement>): void {
 
 function isTauri(): boolean {
   return "__TAURI_INTERNALS__" in window;
+}
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function App() {
@@ -127,9 +137,21 @@ function App() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [imageTrayOpen, setImageTrayOpen] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
-  const [versionsSupported, setVersionsSupported] = useState(false);
-  const [versionCount, setVersionCount] = useState(0);
-  const [saveVersionRequest, setSaveVersionRequest] = useState(0);
+  const [versionCatalog, setVersionCatalog] = useState<{
+    documentPath: string;
+    versions: DocumentVersion[];
+  } | null>(null);
+  const versionsSupported = versionCatalog?.documentPath === path;
+  const versions = versionsSupported ? versionCatalog.versions : [];
+  const [versionSaving, setVersionSaving] = useState(false);
+  const [versionSaveError, setVersionSaveError] = useState<string | null>(null);
+  const versionSavingRef = useRef(false);
+  const currentPathRef = useRef(path);
+  currentPathRef.current = path;
+  const versionReader = useMemo(
+    () => (path ? createDocumentVersionReader(path) : null),
+    [path],
+  );
   const [diffSelection, setDiffSelection] = useState<{
     version: DocumentVersion;
     previousVersion: DocumentVersion | null;
@@ -362,17 +384,60 @@ function App() {
     }
   }, [closeVersionDiff, hideHint, versionsOpen, versionsSupported]);
 
-  const requestSaveVersion = useCallback(() => {
-    if (!versionsSupported || !path || !ready || !onboardingComplete) {
-      return;
+  const saveCurrentVersion = useCallback(async (): Promise<SaveVersionResult | null> => {
+    if (
+      versionSavingRef.current ||
+      !versionsSupported ||
+      !versionReader ||
+      !path ||
+      !ready ||
+      !onboardingComplete
+    ) {
+      return null;
     }
 
+    const documentPath = path;
+    const contents = text;
+    versionSavingRef.current = true;
+    setVersionSaving(true);
+    setVersionSaveError(null);
+
+    try {
+      await flush();
+      const result = await saveDocumentVersion(documentPath, contents);
+      versionReader.remember(result.version.id, contents);
+
+      if (currentPathRef.current === documentPath) {
+        setVersionCatalog((current) =>
+          current?.documentPath === documentPath
+            ? {
+                documentPath,
+                versions: [
+                  result.version,
+                  ...current.versions.filter(
+                    (version) => version.id !== result.version.id,
+                  ),
+                ],
+              }
+            : current,
+        );
+      }
+      return result;
+    } catch (error) {
+      if (currentPathRef.current === documentPath) {
+        setVersionSaveError(errorText(error));
+      }
+      throw error;
+    } finally {
+      versionSavingRef.current = false;
+      setVersionSaving(false);
+    }
+  }, [flush, onboardingComplete, path, ready, text, versionReader, versionsSupported]);
+
+  const requestSaveVersion = useCallback(() => {
     hideHint();
-    setPickerOpen(false);
-    setImageTrayOpen(false);
-    setVersionsOpen(true);
-    setSaveVersionRequest((request) => request + 1);
-  }, [hideHint, onboardingComplete, path, ready, versionsSupported]);
+    void saveCurrentVersion().catch(() => undefined);
+  }, [hideHint, saveCurrentVersion]);
 
   const handleImageCountChange = useCallback(
     (count: number) => {
@@ -432,9 +497,9 @@ function App() {
     setImageTrayOpen(false);
     setVersionsOpen(false);
     setImagesSupported(false);
-    setVersionsSupported(false);
+    setVersionCatalog(null);
     setImageCount(0);
-    setVersionCount(0);
+    setVersionSaveError(null);
 
     if (path === null) {
       return () => {
@@ -454,8 +519,7 @@ function App() {
     void listDocumentVersions(path)
       .then((versions) => {
         if (active) {
-          setVersionsSupported(true);
-          setVersionCount(versions.length);
+          setVersionCatalog({ documentPath: path, versions });
         }
       })
       .catch(() => undefined);
@@ -1028,9 +1092,10 @@ function App() {
       <div
         className={`editor-shell${imageDragging ? " editor-shell-image-drag" : ""}`}
       >
-        {diffSelection && path ? (
+        {diffSelection && path && versionReader && versionsSupported ? (
           <VersionDiff
             documentPath={path}
+            readVersion={versionReader.read}
             version={diffSelection.version}
             previousVersion={diffSelection.previousVersion}
             onClose={closeVersionDiff}
@@ -1190,12 +1255,12 @@ function App() {
                   <button
                     type="button"
                     className="statusbar-toggle"
-                    aria-label={`Versions, ${versionCount}. Command Option V.`}
+                    aria-label={`Versions, ${versions.length}. Command Option V.`}
                     onClick={toggleVersions}
                   >
                     <VersionsIcon className="statusbar-toggle-icon" />
-                    {versionCount > 0 && (
-                      <span className="statusbar-toggle-value">{versionCount}</span>
+                    {versions.length > 0 && (
+                      <span className="statusbar-toggle-value">{versions.length}</span>
                     )}
                   </button>
                 </span>
@@ -1338,13 +1403,16 @@ function App() {
         </footer>
       )}
       </div>
-      {path && versionsSupported && onboardingComplete && (
+      {path && versionReader && versionsSupported && onboardingComplete && (
         <VersionHistory
           open={versionsOpen}
           documentPath={path}
           currentText={text}
-          beforeSave={flush}
-          saveRequest={saveVersionRequest}
+          versions={versions}
+          saving={versionSaving}
+          saveError={versionSaveError}
+          readVersion={versionReader.read}
+          onSave={saveCurrentVersion}
           selectedVersionId={diffSelection?.version.id ?? null}
           onClose={() => {
             setVersionsOpen(false);
@@ -1354,7 +1422,6 @@ function App() {
           onSelectVersion={(version, previousVersion) => {
             setDiffSelection({ version, previousVersion });
           }}
-          onVersionsChange={setVersionCount}
         />
       )}
       {unmarkdownConfirmOpen && (
