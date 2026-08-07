@@ -7,6 +7,7 @@ use std::time::UNIX_EPOCH;
 
 const VAULT_DIR_NAME: &str = "KensEditor";
 const PINS_FILE_NAME: &str = ".pins.json";
+const VERSIONS_DIR_NAME: &str = ".versions";
 const ATTACHMENTS_DIR_NAME: &str = "Attachments";
 const MAX_PASTED_IMAGE_BYTES: usize = 20 * 1024 * 1024;
 const IMAGE_TYPE_ERROR: &str = "Only PNG, JPEG, GIF, and WebP images are supported";
@@ -200,6 +201,49 @@ fn document_images_dir(document_path: &Path) -> Result<PathBuf, String> {
     Ok(ensure_vault_exists()?.join(ATTACHMENTS_DIR_NAME).join(stem))
 }
 
+fn document_versions_dir(document_path: &Path) -> Result<PathBuf, String> {
+    let stem = vault_document_stem(document_path)?;
+    Ok(ensure_vault_exists()?.join(VERSIONS_DIR_NAME).join(stem))
+}
+
+fn version_created_ms(name: &str) -> Option<u64> {
+    let stamp = name.strip_suffix(".txt")?.get(..21)?;
+    let naive = NaiveDateTime::parse_from_str(stamp, "%Y-%m-%d_%H%M%S_%3f").ok()?;
+    let local = Local.from_local_datetime(&naive).single()?;
+    u64::try_from(local.timestamp_millis()).ok()
+}
+
+fn unique_version_path(dir: &Path) -> PathBuf {
+    let stamp = Local::now().format("%Y-%m-%d_%H%M%S_%3f");
+    let mut path = dir.join(format!("{stamp}.txt"));
+
+    if !path.exists() {
+        return path;
+    }
+
+    for index in 2.. {
+        path = dir.join(format!("{stamp}_{index}.txt"));
+        if !path.exists() {
+            return path;
+        }
+    }
+
+    dir.join(format!("{stamp}_overflow.txt"))
+}
+
+fn checked_version_path(document_path: &Path, version_id: &str) -> Result<PathBuf, String> {
+    let id_path = Path::new(version_id);
+    if id_path.components().count() != 1
+        || id_path
+            .extension()
+            .is_none_or(|extension| extension != "txt")
+    {
+        return Err("Invalid version".to_string());
+    }
+
+    Ok(document_versions_dir(document_path)?.join(id_path))
+}
+
 fn image_extension(path: &Path) -> Option<String> {
     let extension = path.extension()?.to_string_lossy().to_lowercase();
     matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "gif" | "webp").then_some(extension)
@@ -314,6 +358,46 @@ struct VaultDocument {
     pinned: bool,
 }
 
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DocumentVersion {
+    id: String,
+    created_ms: u64,
+    preview: String,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SaveVersionResult {
+    created: bool,
+    version: DocumentVersion,
+}
+
+fn read_document_versions(dir: &Path) -> Result<Vec<DocumentVersion>, String> {
+    if !dir.is_dir() {
+        return Ok(Vec::new());
+    }
+
+    let mut versions = Vec::new();
+    for entry in fs::read_dir(dir).map_err(|error| error.to_string())? {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let path = entry.path();
+        if !is_vault_text_file(&path) {
+            continue;
+        }
+
+        let id = entry.file_name().to_string_lossy().into_owned();
+        versions.push(DocumentVersion {
+            created_ms: version_created_ms(&id).unwrap_or(modified_ms(&path)?),
+            preview: file_preview(&path)?,
+            id,
+        });
+    }
+
+    versions.sort_by(|left, right| right.created_ms.cmp(&left.created_ms));
+    Ok(versions)
+}
+
 #[tauri::command]
 fn read_text_file(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|error| error.to_string())
@@ -322,6 +406,58 @@ fn read_text_file(path: String) -> Result<String, String> {
 #[tauri::command]
 fn write_text_file(path: String, contents: String) -> Result<(), String> {
     write_atomic(Path::new(&path), &contents)
+}
+
+#[tauri::command]
+fn list_document_versions(document_path: String) -> Result<Vec<DocumentVersion>, String> {
+    let dir = document_versions_dir(Path::new(&document_path))?;
+    read_document_versions(&dir)
+}
+
+#[tauri::command]
+fn save_document_version(
+    document_path: String,
+    contents: String,
+) -> Result<SaveVersionResult, String> {
+    let dir = document_versions_dir(Path::new(&document_path))?;
+    let versions = read_document_versions(&dir)?;
+
+    if let Some(latest) = versions.first() {
+        let latest_path = checked_version_path(Path::new(&document_path), &latest.id)?;
+        if fs::read_to_string(latest_path).map_err(|error| error.to_string())? == contents {
+            return Ok(SaveVersionResult {
+                created: false,
+                version: latest.clone(),
+            });
+        }
+    }
+
+    fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
+    let path = unique_version_path(&dir);
+    write_atomic(&path, &contents)?;
+    let id = path
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .ok_or_else(|| "Could not name version".to_string())?;
+    let version = DocumentVersion {
+        created_ms: version_created_ms(&id).unwrap_or(modified_ms(&path)?),
+        preview: preview_from_text(&contents),
+        id,
+    };
+
+    Ok(SaveVersionResult {
+        created: true,
+        version,
+    })
+}
+
+#[tauri::command]
+fn read_document_version(document_path: String, version_id: String) -> Result<String, String> {
+    let path = checked_version_path(Path::new(&document_path), &version_id)?;
+    if !path.is_file() {
+        return Err("Version not found".to_string());
+    }
+    fs::read_to_string(path).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -437,9 +573,14 @@ fn delete_vault_document(path: String) -> Result<(), String> {
     let name = vault_file_name(&path)?;
     let dir = ensure_vault_exists()?;
     let images_dir = document_images_dir(&path)?;
+    let versions_dir = document_versions_dir(&path)?;
 
     if images_dir.is_dir() {
         trash::delete(&images_dir).map_err(|error| error.to_string())?;
+    }
+
+    if versions_dir.is_dir() {
+        trash::delete(&versions_dir).map_err(|error| error.to_string())?;
     }
 
     if path.exists() {
@@ -597,6 +738,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_text_file,
             write_text_file,
+            list_document_versions,
+            save_document_version,
+            read_document_version,
             list_vault_documents,
             search_vault_documents,
             most_recent_vault_document,

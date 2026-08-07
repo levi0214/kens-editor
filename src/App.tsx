@@ -15,6 +15,7 @@ import {
   ThemeDarkIcon,
   ThemeLightIcon,
   ThemeSystemIcon,
+  VersionsIcon,
   WrapOffIcon,
   WrapOnIcon,
 } from "./statusBarIcons";
@@ -74,6 +75,8 @@ import { WelcomeScreen } from "./WelcomeScreen";
 import { UnmarkdownConfirm } from "./UnmarkdownConfirm";
 import { useUnmarkdown } from "./useUnmarkdown";
 import { indentSelectedLines, outdentSelectedLines } from "./indent";
+import { VersionHistory } from "./VersionHistory";
+import { listDocumentVersions } from "./versions";
 import "./App.css";
 
 const NEW_DOC_PULSE_MS = 180;
@@ -119,6 +122,9 @@ function App() {
   const onboardingComplete = onboardingStatus === "complete";
   const [pickerOpen, setPickerOpen] = useState(false);
   const [imageTrayOpen, setImageTrayOpen] = useState(false);
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const [versionsSupported, setVersionsSupported] = useState(false);
+  const [versionCount, setVersionCount] = useState(0);
   const [imagesSupported, setImagesSupported] = useState(false);
   const [imageCount, setImageCount] = useState(0);
   const [imageDragging, setImageDragging] = useState(false);
@@ -133,7 +139,7 @@ function App() {
   const { flush, markLoaded, saveError } = useAutoSave(text, path);
   useFlushOnClose(flush);
   const { visible: chromeVisible, bump: bumpChrome } = useChromeIdle(
-    !pickerOpen && !imageTrayOpen && !saveError && !showWelcome,
+    !pickerOpen && !imageTrayOpen && !versionsOpen && !saveError && !showWelcome,
     chromeHovered,
   );
   useWindowFullscreen();
@@ -299,6 +305,7 @@ function App() {
   const openPicker = useCallback(() => {
     hideHint();
     setImageTrayOpen(false);
+    setVersionsOpen(false);
     setPickerOpen(true);
   }, [hideHint]);
 
@@ -309,6 +316,7 @@ function App() {
 
     hideHint();
     setPickerOpen(false);
+    setVersionsOpen(false);
     setImageTrayOpen((open) => {
       if (open) {
         focusEditor(editorRef.current);
@@ -316,6 +324,22 @@ function App() {
       return !open;
     });
   }, [hideHint, imagesSupported]);
+
+  const toggleVersions = useCallback(() => {
+    if (!versionsSupported) {
+      return;
+    }
+
+    hideHint();
+    setPickerOpen(false);
+    setImageTrayOpen(false);
+    setVersionsOpen((open) => {
+      if (open) {
+        focusEditor(editorRef.current);
+      }
+      return !open;
+    });
+  }, [hideHint, versionsSupported]);
 
   const handleImageCountChange = useCallback(
     (count: number) => {
@@ -373,8 +397,11 @@ function App() {
   useEffect(() => {
     let active = true;
     setImageTrayOpen(false);
+    setVersionsOpen(false);
     setImagesSupported(false);
+    setVersionsSupported(false);
     setImageCount(0);
+    setVersionCount(0);
 
     if (path === null) {
       return () => {
@@ -387,6 +414,15 @@ function App() {
         if (active) {
           setImagesSupported(true);
           setImageCount(images.length);
+        }
+      })
+      .catch(() => undefined);
+
+    void listDocumentVersions(path)
+      .then((versions) => {
+        if (active) {
+          setVersionsSupported(true);
+          setVersionCount(versions.length);
         }
       })
       .catch(() => undefined);
@@ -592,6 +628,7 @@ function App() {
   const togglePicker = useCallback(() => {
     hideHint();
     setImageTrayOpen(false);
+    setVersionsOpen(false);
     setPickerOpen((open) => {
       if (open) {
         focusEditor(editorRef.current);
@@ -780,6 +817,7 @@ function App() {
         direction !== null &&
         !pickerOpen &&
         !imageTrayOpen &&
+        !versionsOpen &&
         !unmarkdownConfirmOpen &&
         onboardingComplete &&
         ready
@@ -873,6 +911,7 @@ function App() {
     cycleTheme,
     showWelcome,
     unmarkdownConfirmOpen,
+    versionsOpen,
   ]);
 
   return (
@@ -1056,6 +1095,32 @@ function App() {
                   </button>
                 </span>
               )}
+              {versionsSupported && (
+                <span
+                  className="chrome-tip-wrap"
+                  onMouseEnter={() => showHint("versions")}
+                  onMouseLeave={hideHint}
+                  onFocus={() => showHint("versions")}
+                  onBlur={hideHint}
+                >
+                  <ChromeHint
+                    name="Versions"
+                    className="chrome-tip-left"
+                    visible={activeHint === "versions"}
+                  />
+                  <button
+                    type="button"
+                    className="statusbar-toggle"
+                    aria-label={`Versions, ${versionCount}.`}
+                    onClick={toggleVersions}
+                  >
+                    <VersionsIcon className="statusbar-toggle-icon" />
+                    {versionCount > 0 && (
+                      <span className="statusbar-toggle-value">{versionCount}</span>
+                    )}
+                  </button>
+                </span>
+              )}
               <span
                 className="chrome-tip-wrap"
                 onMouseEnter={() => showHint("unmarkdown")}
@@ -1224,6 +1289,18 @@ function App() {
             focusEditor(editorRef.current);
           }}
           onCountChange={handleImageCountChange}
+        />
+      )}
+      {versionsOpen && path && versionsSupported && onboardingComplete && (
+        <VersionHistory
+          documentPath={path}
+          currentText={text}
+          beforeSave={flush}
+          onClose={() => {
+            setVersionsOpen(false);
+            focusEditor(editorRef.current);
+          }}
+          onVersionsChange={setVersionCount}
         />
       )}
     </div>
