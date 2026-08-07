@@ -8,10 +8,60 @@ import { useEffect, useRef } from "react";
 import { planWindowExpansion } from "./windowExpansion";
 
 const SIDEBAR_WIDTH = 292;
+const SAVED_FRAME_KEY = "kens-editor:versions-window-frame";
 
 interface SavedWindowFrame {
   position: PhysicalPosition;
   innerSize: PhysicalSize;
+}
+
+interface StoredWindowFrame {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function readSavedFrame(): SavedWindowFrame | null {
+  try {
+    const value = window.sessionStorage.getItem(SAVED_FRAME_KEY);
+    if (!value) {
+      return null;
+    }
+
+    const frame = JSON.parse(value) as StoredWindowFrame;
+    if (![frame.x, frame.y, frame.width, frame.height].every(Number.isFinite)) {
+      return null;
+    }
+
+    return {
+      position: new PhysicalPosition(frame.x, frame.y),
+      innerSize: new PhysicalSize(frame.width, frame.height),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeSavedFrame(frame: SavedWindowFrame | null): void {
+  try {
+    if (!frame) {
+      window.sessionStorage.removeItem(SAVED_FRAME_KEY);
+      return;
+    }
+
+    window.sessionStorage.setItem(
+      SAVED_FRAME_KEY,
+      JSON.stringify({
+        x: frame.position.x,
+        y: frame.position.y,
+        width: frame.innerSize.width,
+        height: frame.innerSize.height,
+      } satisfies StoredWindowFrame),
+    );
+  } catch {
+    // Window restoration still works for the lifetime of this component.
+  }
 }
 
 function isTauri(): boolean {
@@ -19,7 +69,7 @@ function isTauri(): boolean {
 }
 
 export function useVersionSidebarWindow(open: boolean): void {
-  const savedFrameRef = useRef<SavedWindowFrame | null>(null);
+  const savedFrameRef = useRef<SavedWindowFrame | null>(readSavedFrame());
   const operationRef = useRef(Promise.resolve());
 
   useEffect(() => {
@@ -33,10 +83,16 @@ export function useVersionSidebarWindow(open: boolean): void {
         const appWindow = getCurrentWindow();
         if (!open) {
           const savedFrame = savedFrameRef.current;
-          savedFrameRef.current = null;
           if (savedFrame) {
-            await appWindow.setSize(savedFrame.innerSize);
-            await appWindow.setPosition(savedFrame.position);
+            try {
+              await appWindow.setSize(savedFrame.innerSize);
+              await appWindow.setPosition(savedFrame.position);
+              savedFrameRef.current = null;
+              writeSavedFrame(null);
+            } catch {
+              // Keep the original frame. A later close can retry, and opening
+              // again must never expand from an already-expanded window.
+            }
           }
           return;
         }
@@ -80,6 +136,8 @@ export function useVersionSidebarWindow(open: boolean): void {
         }
 
         const savedFrame = { position, innerSize };
+        savedFrameRef.current = savedFrame;
+        writeSavedFrame(savedFrame);
         try {
           if (plan.x !== position.x) {
             await appWindow.setPosition(new PhysicalPosition(plan.x, position.y));
@@ -87,9 +145,18 @@ export function useVersionSidebarWindow(open: boolean): void {
           await appWindow.setSize(
             new PhysicalSize(innerSize.width + plan.addedWidth, innerSize.height),
           );
-          savedFrameRef.current = savedFrame;
         } catch {
-          await appWindow.setPosition(position).catch(() => undefined);
+          let restored = true;
+          await appWindow.setSize(innerSize).catch(() => {
+            restored = false;
+          });
+          await appWindow.setPosition(position).catch(() => {
+            restored = false;
+          });
+          if (restored) {
+            savedFrameRef.current = null;
+            writeSavedFrame(null);
+          }
         }
       });
   }, [open]);
