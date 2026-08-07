@@ -5,62 +5,90 @@ import {
   PhysicalSize,
 } from "@tauri-apps/api/window";
 import { useEffect, useRef } from "react";
-import { planWindowExpansion } from "./windowExpansion";
+import {
+  planWindowContraction,
+  planWindowExpansion,
+} from "./windowExpansion";
 
 const SIDEBAR_WIDTH = 292;
 const SAVED_FRAME_KEY = "kens-editor:versions-window-frame";
 
-interface SavedWindowFrame {
-  position: PhysicalPosition;
-  innerSize: PhysicalSize;
+interface ExpandedWindowAdjustment {
+  kind: "expanded";
+  addedWidth: number;
+  shiftedX: number;
 }
 
-interface StoredWindowFrame {
+interface ClosingWindowTarget {
+  kind: "closing";
   x: number;
   y: number;
   width: number;
   height: number;
 }
 
-function readSavedFrame(): SavedWindowFrame | null {
+type SavedWindowState = ExpandedWindowAdjustment | ClosingWindowTarget;
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function readSavedState(): SavedWindowState | null {
   try {
     const value = window.sessionStorage.getItem(SAVED_FRAME_KEY);
     if (!value) {
       return null;
     }
 
-    const frame = JSON.parse(value) as StoredWindowFrame;
-    if (![frame.x, frame.y, frame.width, frame.height].every(Number.isFinite)) {
-      return null;
+    const state = JSON.parse(value) as Record<string, unknown>;
+    if (
+      state.kind === "expanded" &&
+      isFiniteNumber(state.addedWidth) &&
+      isFiniteNumber(state.shiftedX) &&
+      state.addedWidth > 0 &&
+      state.shiftedX >= 0
+    ) {
+      return {
+        kind: "expanded",
+        addedWidth: state.addedWidth,
+        shiftedX: state.shiftedX,
+      };
     }
 
-    return {
-      position: new PhysicalPosition(frame.x, frame.y),
-      innerSize: new PhysicalSize(frame.width, frame.height),
-    };
+    if (
+      (state.kind === "closing" || state.kind === undefined) &&
+      isFiniteNumber(state.x) &&
+      isFiniteNumber(state.y) &&
+      isFiniteNumber(state.width) &&
+      isFiniteNumber(state.height) &&
+      state.width > 0 &&
+      state.height > 0
+    ) {
+      return {
+        kind: "closing",
+        x: state.x,
+        y: state.y,
+        width: state.width,
+        height: state.height,
+      };
+    }
+
+    return null;
   } catch {
     return null;
   }
 }
 
-function writeSavedFrame(frame: SavedWindowFrame | null): void {
+function writeSavedState(state: SavedWindowState | null): void {
   try {
-    if (!frame) {
+    if (!state) {
       window.sessionStorage.removeItem(SAVED_FRAME_KEY);
       return;
     }
 
-    window.sessionStorage.setItem(
-      SAVED_FRAME_KEY,
-      JSON.stringify({
-        x: frame.position.x,
-        y: frame.position.y,
-        width: frame.innerSize.width,
-        height: frame.innerSize.height,
-      } satisfies StoredWindowFrame),
-    );
+    window.sessionStorage.setItem(SAVED_FRAME_KEY, JSON.stringify(state));
   } catch {
-    // Window restoration still works for the lifetime of this component.
+    // Window adjustment still works for the lifetime of this component.
   }
 }
 
@@ -69,7 +97,7 @@ function isTauri(): boolean {
 }
 
 export function useVersionSidebarWindow(open: boolean): void {
-  const savedFrameRef = useRef<SavedWindowFrame | null>(readSavedFrame());
+  const savedStateRef = useRef<SavedWindowState | null>(readSavedState());
   const operationRef = useRef(Promise.resolve());
 
   useEffect(() => {
@@ -82,22 +110,67 @@ export function useVersionSidebarWindow(open: boolean): void {
 
         const appWindow = getCurrentWindow();
         if (!open) {
-          const savedFrame = savedFrameRef.current;
-          if (savedFrame) {
-            try {
-              await appWindow.setSize(savedFrame.innerSize);
-              await appWindow.setPosition(savedFrame.position);
-              savedFrameRef.current = null;
-              writeSavedFrame(null);
-            } catch {
-              // Keep the original frame. A later close can retry, and opening
-              // again must never expand from an already-expanded window.
-            }
+          const savedState = savedStateRef.current;
+          if (!savedState) {
+            return;
           }
+
+          let target: ClosingWindowTarget;
+          if (savedState.kind === "closing") {
+            target = savedState;
+          } else {
+            const [monitor, position, outerSize, innerSize] = await Promise.all([
+              currentMonitor(),
+              appWindow.outerPosition(),
+              appWindow.outerSize(),
+              appWindow.innerSize(),
+            ]);
+            const removableWidth = Math.min(
+              savedState.addedWidth,
+              Math.max(0, innerSize.width - 1),
+            );
+            const plan = monitor
+              ? planWindowContraction(
+                  {
+                    x: position.x,
+                    y: position.y,
+                    width: outerSize.width,
+                    height: outerSize.height,
+                  },
+                  {
+                    x: monitor.workArea.position.x,
+                    y: monitor.workArea.position.y,
+                    width: monitor.workArea.size.width,
+                    height: monitor.workArea.size.height,
+                  },
+                  removableWidth,
+                  savedState.shiftedX,
+                )
+              : {
+                  removedWidth: removableWidth,
+                  x: position.x + savedState.shiftedX,
+                  y: position.y,
+                };
+
+            target = {
+              kind: "closing",
+              x: plan.x,
+              y: plan.y,
+              width: innerSize.width - plan.removedWidth,
+              height: innerSize.height,
+            };
+            savedStateRef.current = target;
+            writeSavedState(target);
+          }
+
+          await appWindow.setSize(new PhysicalSize(target.width, target.height));
+          await appWindow.setPosition(new PhysicalPosition(target.x, target.y));
+          savedStateRef.current = null;
+          writeSavedState(null);
           return;
         }
 
-        if (savedFrameRef.current) {
+        if (savedStateRef.current) {
           return;
         }
 
@@ -135,9 +208,13 @@ export function useVersionSidebarWindow(open: boolean): void {
           return;
         }
 
-        const savedFrame = { position, innerSize };
-        savedFrameRef.current = savedFrame;
-        writeSavedFrame(savedFrame);
+        const adjustment: ExpandedWindowAdjustment = {
+          kind: "expanded",
+          addedWidth: plan.addedWidth,
+          shiftedX: position.x - plan.x,
+        };
+        savedStateRef.current = adjustment;
+        writeSavedState(adjustment);
         try {
           if (plan.x !== position.x) {
             await appWindow.setPosition(new PhysicalPosition(plan.x, position.y));
@@ -146,6 +223,15 @@ export function useVersionSidebarWindow(open: boolean): void {
             new PhysicalSize(innerSize.width + plan.addedWidth, innerSize.height),
           );
         } catch {
+          const target: ClosingWindowTarget = {
+            kind: "closing",
+            x: position.x,
+            y: position.y,
+            width: innerSize.width,
+            height: innerSize.height,
+          };
+          savedStateRef.current = target;
+          writeSavedState(target);
           let restored = true;
           await appWindow.setSize(innerSize).catch(() => {
             restored = false;
@@ -154,8 +240,8 @@ export function useVersionSidebarWindow(open: boolean): void {
             restored = false;
           });
           if (restored) {
-            savedFrameRef.current = null;
-            writeSavedFrame(null);
+            savedStateRef.current = null;
+            writeSavedState(null);
           }
         }
       });
