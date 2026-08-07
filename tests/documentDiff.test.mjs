@@ -60,6 +60,32 @@ test("a changed line includes word-level highlights", () => {
   );
 });
 
+test("Chinese changes highlight only the changed characters", () => {
+  const result = buildDocumentDiff("我喜欢春天\n", "我喜欢秋天\n");
+
+  assert.deepEqual(
+    result.lines[0].spans.filter((span) => span.changed),
+    [{ text: "春", changed: true }],
+  );
+  assert.deepEqual(
+    result.lines[1].spans.filter((span) => span.changed),
+    [{ text: "秋", changed: true }],
+  );
+});
+
+test("blank lines remain visible in changed blocks", () => {
+  const result = buildDocumentDiff(
+    "first\n\nthird\n",
+    "first\nsecond\nthird\n",
+    null,
+  );
+
+  assert.equal(result.lines[1].kind, "removed");
+  assert.equal(result.lines[1].text, "");
+  assert.equal(result.lines[2].kind, "added");
+  assert.equal(result.lines[2].text, "second");
+});
+
 test("split rows align removed and added lines", () => {
   const diff = buildDocumentDiff("old first\nold second\n", "new first\n");
   const rows = splitDocumentDiffLines(diff.lines);
@@ -70,6 +96,19 @@ test("split rows align removed and added lines", () => {
   assert.equal(rows[1].kind, "lines");
   assert.equal(rows[1].left.kind, "removed");
   assert.equal(rows[1].right, null);
+});
+
+test("split rows leave space when additions outnumber removals", () => {
+  const diff = buildDocumentDiff(
+    "old first\nold second\n",
+    "new first\nnew second\nnew third\n",
+  );
+  const rows = splitDocumentDiffLines(diff.lines);
+
+  assert.equal(rows.length, 3);
+  assert.equal(rows[2].left, null);
+  assert.equal(rows[2].right.kind, "added");
+  assert.equal(rows[2].right.text, "new third");
 });
 
 test("long unchanged sections collapse around changes", () => {
