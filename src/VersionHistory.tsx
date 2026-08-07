@@ -60,7 +60,7 @@ export function VersionHistory({
     documentPath: string;
     versionKey: string;
     lineChanges: Record<string, DocumentLineChanges>;
-    latestSavedText: string;
+    latestSavedText: string | null;
   } | null>(null);
   const messageTimerRef = useRef<number | undefined>(undefined);
   const versionKey = useMemo(
@@ -95,7 +95,7 @@ export function VersionHistory({
           documentPath,
           versionKey,
           lineChanges,
-          latestSavedText: previous,
+          latestSavedText: chronological.length === 0 ? null : previous,
         });
       })
       .catch((loadError) => {
@@ -114,8 +114,12 @@ export function VersionHistory({
     if (!open || !countsAreCurrent) {
       return null;
     }
-    return countChangedLines(counts.latestSavedText, currentText);
+    return countChangedLines(counts.latestSavedText ?? "", currentText);
   }, [counts, countsAreCurrent, currentText, open]);
+  const saveIsRedundant =
+    countsAreCurrent &&
+    counts.latestSavedText !== null &&
+    currentText === counts.latestSavedText;
 
   useEffect(
     () => () => {
@@ -193,7 +197,7 @@ export function VersionHistory({
             className="versions-current-save"
             aria-label="Save current version. Command Option S."
             title="Save current version · ⌥⌘S"
-            disabled={saving}
+            disabled={saving || saveIsRedundant}
             onClick={() => void saveVersion()}
           >
             {saving ? "Saving…" : message ?? "Save"}
