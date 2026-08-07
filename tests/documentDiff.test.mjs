@@ -1,6 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildDocumentDiff } from "../src/documentDiff.ts";
+import { buildDocumentDiff, countChangedLines } from "../src/documentDiff.ts";
+
+test("line changes count additions and removals", () => {
+  assert.deepEqual(countChangedLines("", "one\ntwo\n"), {
+    added: 2,
+    removed: 0,
+  });
+  assert.deepEqual(countChangedLines("one\ntwo\n", "one\nthree\nfour\n"), {
+    added: 2,
+    removed: 1,
+  });
+});
 
 test("unchanged documents have no displayed lines", () => {
   assert.deepEqual(buildDocumentDiff("same\n", "same\n"), {

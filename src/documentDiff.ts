@@ -24,12 +24,36 @@ export interface DocumentDiff {
   hasChanges: boolean;
 }
 
+export interface DocumentLineChanges {
+  added: number;
+  removed: number;
+}
+
 function splitLines(value: string): string[] {
   const lines = value.split("\n");
   if (lines[lines.length - 1] === "") {
     lines.pop();
   }
   return lines;
+}
+
+export function countChangedLines(
+  oldText: string,
+  newText: string,
+): DocumentLineChanges {
+  let added = 0;
+  let removed = 0;
+
+  for (const part of diffLines(oldText, newText)) {
+    const lineCount = splitLines(part.value).length;
+    if (part.added) {
+      added += lineCount;
+    } else if (part.removed) {
+      removed += lineCount;
+    }
+  }
+
+  return { added, removed };
 }
 
 function wordSpans(
