@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildDocumentDiff, countChangedLines } from "../src/documentDiff.ts";
+import {
+  buildDocumentDiff,
+  countChangedLines,
+  splitDocumentDiffLines,
+} from "../src/documentDiff.ts";
 
 test("line changes count additions and removals", () => {
   assert.deepEqual(countChangedLines("", "one\ntwo\n"), {
@@ -36,6 +40,18 @@ test("a changed line includes word-level highlights", () => {
     result.lines[1].spans.some((span) => span.changed && span.text.includes("new")),
     true,
   );
+});
+
+test("split rows align removed and added lines", () => {
+  const diff = buildDocumentDiff("old first\nold second\n", "new first\n");
+  const rows = splitDocumentDiffLines(diff.lines);
+
+  assert.equal(rows[0].kind, "lines");
+  assert.equal(rows[0].left.kind, "removed");
+  assert.equal(rows[0].right.kind, "added");
+  assert.equal(rows[1].kind, "lines");
+  assert.equal(rows[1].left.kind, "removed");
+  assert.equal(rows[1].right, null);
 });
 
 test("long unchanged sections collapse around changes", () => {

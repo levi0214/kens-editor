@@ -24,6 +24,14 @@ export interface DocumentDiff {
   hasChanges: boolean;
 }
 
+export type SplitDocumentDiffRow =
+  | { kind: "separator" }
+  | {
+      kind: "lines";
+      left: DocumentDiffLine | null;
+      right: DocumentDiffLine | null;
+    };
+
 export interface DocumentLineChanges {
   added: number;
   removed: number;
@@ -54,6 +62,56 @@ export function countChangedLines(
   }
 
   return { added, removed };
+}
+
+export function splitDocumentDiffLines(
+  lines: DocumentDiffLine[],
+): SplitDocumentDiffRow[] {
+  const rows: SplitDocumentDiffRow[] = [];
+
+  for (let index = 0; index < lines.length; ) {
+    const line = lines[index];
+    if (line.kind === "separator") {
+      rows.push({ kind: "separator" });
+      index += 1;
+      continue;
+    }
+
+    if (line.kind === "context") {
+      rows.push({ kind: "lines", left: line, right: line });
+      index += 1;
+      continue;
+    }
+
+    if (line.kind === "added") {
+      rows.push({ kind: "lines", left: null, right: line });
+      index += 1;
+      continue;
+    }
+
+    const removed: DocumentDiffLine[] = [];
+    while (index < lines.length && lines[index].kind === "removed") {
+      removed.push(lines[index]);
+      index += 1;
+    }
+
+    const added: DocumentDiffLine[] = [];
+    while (index < lines.length && lines[index].kind === "added") {
+      added.push(lines[index]);
+      index += 1;
+    }
+
+    const rowCount = Math.max(removed.length, added.length);
+    for (let row = 0; row < rowCount; row += 1) {
+      rows.push({
+        kind: "lines",
+        left: removed[row] ?? null,
+        right: added[row] ?? null,
+      });
+    }
+  }
+
+  return rows;
 }
 
 function wordSpans(
