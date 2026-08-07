@@ -1383,28 +1383,6 @@ function App() {
         <div className="statusbar-controls">
           <span
             className="chrome-tip-wrap"
-            onMouseEnter={() => showHint("unmarkdown")}
-            onMouseLeave={hideHint}
-            onFocus={() => showHint("unmarkdown")}
-            onBlur={hideHint}
-          >
-            <ChromeHint
-              name="Unmarkdown"
-              keys={["⇧", "⌘", "R"]}
-              className="chrome-tip-right"
-              visible={activeHint === "unmarkdown"}
-            />
-            <button
-              type="button"
-              className="statusbar-toggle"
-              aria-label="Unmarkdown. ⌘⇧R."
-              onClick={openUnmarkdownConfirm}
-            >
-              <UnmarkdownIcon className="statusbar-toggle-icon" />
-            </button>
-          </span>
-          <span
-            className="chrome-tip-wrap"
             onMouseEnter={() => showHint("font")}
             onMouseLeave={hideHint}
             onFocus={() => showHint("font")}
@@ -1476,6 +1454,28 @@ function App() {
               ) : (
                 <NarrowWidthIcon className="statusbar-toggle-icon" />
               )}
+            </button>
+          </span>
+          <span
+            className="chrome-tip-wrap"
+            onMouseEnter={() => showHint("unmarkdown")}
+            onMouseLeave={hideHint}
+            onFocus={() => showHint("unmarkdown")}
+            onBlur={hideHint}
+          >
+            <ChromeHint
+              name="Unmarkdown"
+              keys={["⇧", "⌘", "R"]}
+              className="chrome-tip-right"
+              visible={activeHint === "unmarkdown"}
+            />
+            <button
+              type="button"
+              className="statusbar-toggle"
+              aria-label="Unmarkdown. ⌘⇧R."
+              onClick={openUnmarkdownConfirm}
+            >
+              <UnmarkdownIcon className="statusbar-toggle-icon" />
             </button>
           </span>
           <span
