@@ -82,6 +82,7 @@ import {
   listDocumentVersions,
   saveDocumentVersion,
   type DocumentVersion,
+  type DocumentVersionReader,
   type SaveVersionResult,
 } from "./versions";
 import { useVersionSidebarWindow } from "./useVersionSidebarWindow";
@@ -146,6 +147,11 @@ function App() {
   const [versionSaving, setVersionSaving] = useState(false);
   const [versionSaveError, setVersionSaveError] = useState<string | null>(null);
   const versionSavingRef = useRef(false);
+  const pendingVersionSaveRef = useRef<{
+    documentPath: string;
+    contents: string;
+    reader: DocumentVersionReader;
+  } | null>(null);
   const currentPathRef = useRef(path);
   currentPathRef.current = path;
   const versionReader = useMemo(
@@ -386,7 +392,6 @@ function App() {
 
   const saveCurrentVersion = useCallback(async (): Promise<SaveVersionResult | null> => {
     if (
-      versionSavingRef.current ||
       !versionsSupported ||
       !versionReader ||
       !path ||
@@ -396,38 +401,67 @@ function App() {
       return null;
     }
 
-    const documentPath = path;
-    const contents = text;
+    const requested = {
+      documentPath: path,
+      contents: text,
+      reader: versionReader,
+    };
+    if (versionSavingRef.current) {
+      pendingVersionSaveRef.current = requested;
+      return null;
+    }
+
     versionSavingRef.current = true;
     setVersionSaving(true);
-    setVersionSaveError(null);
+    let request: typeof requested | null = requested;
+    let latestResult: SaveVersionResult | null = null;
+    let latestError: unknown = null;
 
     try {
-      await flush();
-      const result = await saveDocumentVersion(documentPath, contents);
-      versionReader.remember(result.version.id, contents);
+      while (request) {
+        const saveRequest = request;
+        pendingVersionSaveRef.current = null;
+        setVersionSaveError(null);
 
-      if (currentPathRef.current === documentPath) {
-        setVersionCatalog((current) =>
-          current?.documentPath === documentPath
-            ? {
-                documentPath,
-                versions: [
-                  result.version,
-                  ...current.versions.filter(
-                    (version) => version.id !== result.version.id,
-                  ),
-                ],
-              }
-            : current,
-        );
+        try {
+          await flush();
+          const result = await saveDocumentVersion(
+            saveRequest.documentPath,
+            saveRequest.contents,
+          );
+          saveRequest.reader.remember(result.version.id, saveRequest.contents);
+
+          if (currentPathRef.current === saveRequest.documentPath) {
+            setVersionCatalog((current) =>
+              current?.documentPath === saveRequest.documentPath
+                ? {
+                    documentPath: saveRequest.documentPath,
+                    versions: [
+                      result.version,
+                      ...current.versions.filter(
+                        (version) => version.id !== result.version.id,
+                      ),
+                    ],
+                  }
+                : current,
+            );
+          }
+          latestResult = result;
+          latestError = null;
+        } catch (error) {
+          latestError = error;
+          if (currentPathRef.current === saveRequest.documentPath) {
+            setVersionSaveError(errorText(error));
+          }
+        }
+
+        request = pendingVersionSaveRef.current;
       }
-      return result;
-    } catch (error) {
-      if (currentPathRef.current === documentPath) {
-        setVersionSaveError(errorText(error));
+
+      if (latestError) {
+        throw latestError;
       }
-      throw error;
+      return latestResult;
     } finally {
       versionSavingRef.current = false;
       setVersionSaving(false);
