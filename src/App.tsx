@@ -113,6 +113,8 @@ function App() {
     saveFileAs: () => {},
     togglePicker: () => {},
     toggleImages: () => {},
+    toggleVersions: () => {},
+    saveVersion: () => {},
     unmarkdown: () => {},
   });
   const [text, setText] = useState("");
@@ -126,6 +128,7 @@ function App() {
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [versionsSupported, setVersionsSupported] = useState(false);
   const [versionCount, setVersionCount] = useState(0);
+  const [saveVersionRequest, setSaveVersionRequest] = useState(0);
   const [imagesSupported, setImagesSupported] = useState(false);
   const [imageCount, setImageCount] = useState(0);
   const [imageDragging, setImageDragging] = useState(false);
@@ -342,6 +345,18 @@ function App() {
       return !open;
     });
   }, [hideHint, versionsSupported]);
+
+  const requestSaveVersion = useCallback(() => {
+    if (!versionsSupported || !path || !ready || !onboardingComplete) {
+      return;
+    }
+
+    hideHint();
+    setPickerOpen(false);
+    setImageTrayOpen(false);
+    setVersionsOpen(true);
+    setSaveVersionRequest((request) => request + 1);
+  }, [hideHint, onboardingComplete, path, ready, versionsSupported]);
 
   const handleImageCountChange = useCallback(
     (count: number) => {
@@ -671,6 +686,8 @@ function App() {
       },
       togglePicker,
       toggleImages: toggleImageTray,
+      toggleVersions,
+      saveVersion: requestSaveVersion,
       unmarkdown: openUnmarkdownConfirm,
     };
   }, [
@@ -678,9 +695,11 @@ function App() {
     newDocument,
     openFile,
     openUnmarkdownConfirm,
+    requestSaveVersion,
     saveFileAs,
     toggleImageTray,
     togglePicker,
+    toggleVersions,
   ]);
 
   useEffect(() => {
@@ -733,6 +752,12 @@ function App() {
             accelerator: "CmdOrCtrl+I",
             action: () => menuActionsRef.current.toggleImages(),
           }),
+          await MenuItem.new({
+            id: "versions",
+            text: "Versions",
+            accelerator: "CmdOrCtrl+Alt+V",
+            action: () => menuActionsRef.current.toggleVersions(),
+          }),
           await separator(),
           await MenuItem.new({
             id: "open-file",
@@ -752,6 +777,12 @@ function App() {
             text: "Save As...",
             accelerator: "CmdOrCtrl+Shift+S",
             action: () => menuActionsRef.current.saveFileAs(),
+          }),
+          await MenuItem.new({
+            id: "save-version",
+            text: "Save Version",
+            accelerator: "CmdOrCtrl+Alt+S",
+            action: () => menuActionsRef.current.saveVersion(),
           }),
           await separator(),
           await PredefinedMenuItem.new({ item: "CloseWindow" }),
@@ -841,7 +872,8 @@ function App() {
         key === "n" ||
         key === "o" ||
         key === "p" ||
-        key === "s";
+        key === "s" ||
+        (key === "v" && event.altKey);
       if (isTauri() && menuOwned) {
         return;
       }
@@ -858,6 +890,12 @@ function App() {
       } else if (key === "i") {
         event.preventDefault();
         toggleImageTray();
+      } else if (key === "v" && event.altKey && !event.shiftKey) {
+        event.preventDefault();
+        toggleVersions();
+      } else if (key === "s" && event.altKey && !event.shiftKey) {
+        event.preventDefault();
+        requestSaveVersion();
       } else if (key === "s" && event.shiftKey) {
         event.preventDefault();
         void saveFileAs();
@@ -903,10 +941,12 @@ function App() {
     openFile,
     pickerOpen,
     ready,
+    requestSaveVersion,
     resetFontSize,
     saveFileAs,
     toggleImageTray,
     togglePicker,
+    toggleVersions,
     toggleLineWrap,
     toggleContentWidth,
     cycleTheme,
@@ -1106,13 +1146,14 @@ function App() {
                 >
                   <ChromeHint
                     name="Versions"
+                    keys={["⌥", "⌘", "V"]}
                     className="chrome-tip-left"
                     visible={activeHint === "versions"}
                   />
                   <button
                     type="button"
                     className="statusbar-toggle"
-                    aria-label={`Versions, ${versionCount}.`}
+                    aria-label={`Versions, ${versionCount}. Command Option V.`}
                     onClick={toggleVersions}
                   >
                     <VersionsIcon className="statusbar-toggle-icon" />
@@ -1260,11 +1301,13 @@ function App() {
         </footer>
       )}
       </div>
-      {versionsOpen && path && versionsSupported && onboardingComplete && (
+      {path && versionsSupported && onboardingComplete && (
         <VersionHistory
+          open={versionsOpen}
           documentPath={path}
           currentText={text}
           beforeSave={flush}
+          saveRequest={saveVersionRequest}
           onClose={() => {
             setVersionsOpen(false);
             focusEditor(editorRef.current);

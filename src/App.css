@@ -1189,6 +1189,10 @@ body,
   app-region: no-drag;
 }
 
+.versions-sidebar[hidden] {
+  display: none;
+}
+
 .versions-sidebar-header {
   box-sizing: border-box;
   display: flex;

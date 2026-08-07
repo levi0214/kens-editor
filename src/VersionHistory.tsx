@@ -7,9 +7,11 @@ import {
 } from "./versions";
 
 interface VersionHistoryProps {
+  open: boolean;
   documentPath: string;
   currentText: string;
   beforeSave: () => Promise<void>;
+  saveRequest: number;
   onClose: () => void;
   onVersionsChange: (count: number) => void;
 }
@@ -28,9 +30,11 @@ function versionTime(createdMs: number): string {
 }
 
 export function VersionHistory({
+  open,
   documentPath,
   currentText,
   beforeSave,
+  saveRequest,
   onClose,
   onVersionsChange,
 }: VersionHistoryProps) {
@@ -40,6 +44,7 @@ export function VersionHistory({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const messageTimerRef = useRef<number | undefined>(undefined);
+  const handledSaveRequestRef = useRef(saveRequest);
 
   useEffect(() => {
     let active = true;
@@ -64,14 +69,14 @@ export function VersionHistory({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (open && event.key === "Escape") {
         event.preventDefault();
         onClose();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  }, [onClose, open]);
 
   useEffect(
     () => () => {
@@ -115,8 +120,17 @@ export function VersionHistory({
     }
   }, [beforeSave, currentText, documentPath, onVersionsChange, saving, showMessage, versions]);
 
+  useEffect(() => {
+    if (saveRequest === handledSaveRequestRef.current) {
+      return;
+    }
+
+    handledSaveRequestRef.current = saveRequest;
+    void saveVersion();
+  }, [saveRequest, saveVersion]);
+
   return (
-    <aside className="versions-sidebar" aria-label="Versions">
+    <aside className="versions-sidebar" aria-label="Versions" hidden={!open}>
       <header className="versions-sidebar-header">
         <span className="versions-sidebar-title">Versions</span>
         <button
@@ -133,6 +147,8 @@ export function VersionHistory({
         <button
           type="button"
           className="versions-save"
+          aria-label="Save version. Command Option S."
+          title="Save version · ⌥⌘S"
           disabled={saving || loading}
           onClick={() => void saveVersion()}
         >
