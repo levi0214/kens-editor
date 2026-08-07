@@ -916,6 +916,7 @@ function App() {
 
   return (
     <div className={`app${newDocPulse ? " app-new-pulse" : ""}`}>
+      <div className="editor-column">
       <header
         className="titlebar"
         onMouseEnter={() => setChromeHovered(true)}
@@ -1021,18 +1022,6 @@ function App() {
             spellCheck={false}
             wrap={wrap === "wrap" ? "soft" : "off"}
             disabled={!ready}
-          />
-        )}
-        {versionsOpen && path && versionsSupported && onboardingComplete && (
-          <VersionHistory
-            documentPath={path}
-            currentText={text}
-            beforeSave={flush}
-            onClose={() => {
-              setVersionsOpen(false);
-              focusEditor(editorRef.current);
-            }}
-            onVersionsChange={setVersionCount}
           />
         )}
         {(imageDragging || imageFeedback) && (
@@ -1269,6 +1258,19 @@ function App() {
           </span>
         </div>
         </footer>
+      )}
+      </div>
+      {versionsOpen && path && versionsSupported && onboardingComplete && (
+        <VersionHistory
+          documentPath={path}
+          currentText={text}
+          beforeSave={flush}
+          onClose={() => {
+            setVersionsOpen(false);
+            focusEditor(editorRef.current);
+          }}
+          onVersionsChange={setVersionCount}
+        />
       )}
       {unmarkdownConfirmOpen && (
         <UnmarkdownConfirm
