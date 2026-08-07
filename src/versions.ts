@@ -44,6 +44,16 @@ export async function readDocumentVersion(
   });
 }
 
+export async function deleteDocumentVersion(
+  documentPath: string,
+  versionId: string,
+): Promise<DocumentVersion[]> {
+  return invoke<DocumentVersion[]>("delete_document_version", {
+    documentPath,
+    versionId,
+  });
+}
+
 export function createDocumentVersionReader(
   documentPath: string,
 ): DocumentVersionReader {

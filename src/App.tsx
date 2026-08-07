@@ -79,6 +79,7 @@ import { VersionHistory } from "./VersionHistory";
 import { VersionDiff } from "./VersionDiff";
 import {
   createDocumentVersionReader,
+  deleteDocumentVersion,
   listDocumentVersions,
   saveDocumentVersion,
   type DocumentVersion,
@@ -511,6 +512,42 @@ function App() {
     hideHint();
     void saveCurrentVersion().catch(() => undefined);
   }, [hideHint, saveCurrentVersion]);
+
+  const deleteVersion = useCallback(
+    async (versionId: string) => {
+      if (!versionsSupported || !path) {
+        return;
+      }
+
+      const documentPath = path;
+      const nextVersions = await deleteDocumentVersion(documentPath, versionId);
+      if (currentPathRef.current !== documentPath) {
+        return;
+      }
+
+      setVersionCatalog({
+        documentPath,
+        status: "ready",
+        versions: nextVersions,
+      });
+      setDiffSelection((current) => {
+        if (!current) {
+          return null;
+        }
+
+        const selectedIndex = nextVersions.findIndex(
+          (version) => version.id === current.version.id,
+        );
+        return selectedIndex < 0
+          ? null
+          : {
+              version: nextVersions[selectedIndex],
+              previousVersion: nextVersions[selectedIndex + 1] ?? null,
+            };
+      });
+    },
+    [path, versionsSupported],
+  );
 
   const handleImageCountChange = useCallback(
     (count: number) => {
@@ -1522,6 +1559,7 @@ function App() {
           saveError={versionSaveError}
           readVersion={versionReader.read}
           onSave={saveCurrentVersion}
+          onDelete={deleteVersion}
           onRetryCatalog={retryVersionCatalog}
           onRetryReads={retryVersionReads}
           selectedVersionId={diffSelection?.version.id ?? null}

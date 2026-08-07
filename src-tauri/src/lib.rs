@@ -239,7 +239,7 @@ fn unique_version_path_with_stamp(dir: &Path, stamp: &str) -> PathBuf {
     dir.join(format!("{stamp}_overflow.txt"))
 }
 
-fn checked_version_path(document_path: &Path, version_id: &str) -> Result<PathBuf, String> {
+fn checked_version_id(version_id: &str) -> Result<&Path, String> {
     let id_path = Path::new(version_id);
     if id_path.components().count() != 1
         || id_path
@@ -249,6 +249,15 @@ fn checked_version_path(document_path: &Path, version_id: &str) -> Result<PathBu
         return Err("Invalid version".to_string());
     }
 
+    Ok(id_path)
+}
+
+fn checked_version_path_in_dir(dir: &Path, version_id: &str) -> Result<PathBuf, String> {
+    Ok(dir.join(checked_version_id(version_id)?))
+}
+
+fn checked_version_path(document_path: &Path, version_id: &str) -> Result<PathBuf, String> {
+    let id_path = checked_version_id(version_id)?;
     Ok(document_versions_dir(document_path)?.join(id_path))
 }
 
@@ -479,6 +488,31 @@ fn read_document_version(document_path: String, version_id: String) -> Result<St
         return Err("Version not found".to_string());
     }
     fs::read_to_string(path).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn delete_document_version(
+    document_path: String,
+    version_id: String,
+) -> Result<Vec<DocumentVersion>, String> {
+    let dir = document_versions_dir(Path::new(&document_path))?;
+    delete_document_version_in_dir(&dir, &version_id, |path| {
+        trash::delete(path).map_err(|error| error.to_string())
+    })
+}
+
+fn delete_document_version_in_dir(
+    dir: &Path,
+    version_id: &str,
+    delete: impl FnOnce(&Path) -> Result<(), String>,
+) -> Result<Vec<DocumentVersion>, String> {
+    let path = checked_version_path_in_dir(dir, version_id)?;
+    if !path.is_file() {
+        return Err("Version not found".to_string());
+    }
+
+    delete(&path)?;
+    read_document_versions(dir)
 }
 
 #[tauri::command]
@@ -768,6 +802,7 @@ pub fn run() {
             list_document_versions,
             save_document_version,
             read_document_version,
+            delete_document_version,
             list_vault_documents,
             search_vault_documents,
             most_recent_vault_document,
@@ -855,6 +890,23 @@ mod tests {
         assert_eq!(versions[0].number, 2);
         assert_eq!(versions[1].id, first.version.id);
         assert_eq!(versions[1].number, 1);
+    }
+
+    #[test]
+    fn deleting_a_version_returns_the_renumbered_catalog() {
+        let dir = TestDir::new("delete-one-version");
+        let first = save_document_version_in_dir(dir.path(), "first").unwrap();
+        let second = save_document_version_in_dir(dir.path(), "second").unwrap();
+
+        let versions = delete_document_version_in_dir(dir.path(), &first.version.id, |path| {
+            fs::remove_file(path).map_err(|error| error.to_string())
+        })
+        .unwrap();
+
+        assert!(!dir.path().join(first.version.id).exists());
+        assert_eq!(versions.len(), 1);
+        assert_eq!(versions[0].id, second.version.id);
+        assert_eq!(versions[0].number, 1);
     }
 
     #[test]

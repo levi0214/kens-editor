@@ -1545,8 +1545,13 @@ body,
   cursor: pointer;
 }
 
-.versions-item {
+.versions-item-row {
+  position: relative;
   border-bottom: 1px solid rgb(127 127 127 / 12%);
+}
+
+.versions-item-main {
+  padding-right: 14px;
 }
 
 .versions-current {
@@ -1558,7 +1563,7 @@ body,
   padding-right: 78px;
 }
 
-.versions-item:hover,
+.versions-item-row:hover,
 .versions-current:hover,
 .versions-item-selected {
   background: rgb(127 127 127 / 7%);
@@ -1601,6 +1606,78 @@ body,
 .versions-current-save:disabled {
   cursor: default;
   opacity: 0.5;
+}
+
+.versions-item-actions {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.versions-item-delete,
+.versions-item-delete-cancel,
+.versions-item-delete-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  color: inherit;
+  background: none;
+  cursor: pointer;
+}
+
+.versions-item-delete {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.versions-item-row:hover .versions-item-delete,
+.versions-item-delete:focus-visible {
+  opacity: 0.65;
+  pointer-events: auto;
+}
+
+.versions-item-delete:hover {
+  opacity: 1;
+  background: rgb(220 60 60 / 18%);
+}
+
+.versions-item-delete-cancel {
+  background: rgb(127 127 127 / 14%);
+}
+
+.versions-item-delete-cancel:hover {
+  background: rgb(127 127 127 / 22%);
+}
+
+.versions-item-delete-confirm {
+  color: #fff;
+  background: rgb(210 55 55);
+}
+
+.versions-item-delete-confirm:hover {
+  background: rgb(190 45 45);
+}
+
+.versions-item-delete:disabled,
+.versions-item-delete-cancel:disabled,
+.versions-item-delete-confirm:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.versions-item-delete svg,
+.versions-item-delete-cancel svg,
+.versions-item-delete-confirm svg {
+  width: 14px;
+  height: 14px;
 }
 
 .versions-item-heading {

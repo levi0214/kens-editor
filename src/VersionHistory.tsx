@@ -3,7 +3,7 @@ import {
   countChangedLines,
   type DocumentLineChanges,
 } from "./documentDiff";
-import { CloseIcon } from "./statusBarIcons";
+import { CheckIcon, CloseIcon, TrashIcon } from "./statusBarIcons";
 import {
   type DocumentVersion,
   type SaveVersionResult,
@@ -20,6 +20,7 @@ interface VersionHistoryProps {
   saveError: string | null;
   readVersion: (versionId: string) => Promise<string>;
   onSave: () => Promise<SaveVersionResult | null>;
+  onDelete: (versionId: string) => Promise<void>;
   onRetryCatalog: () => void;
   onRetryReads: () => void;
   selectedVersionId: string | null;
@@ -55,6 +56,7 @@ export function VersionHistory({
   saveError,
   readVersion,
   onSave,
+  onDelete,
   onRetryCatalog,
   onRetryReads,
   selectedVersionId,
@@ -64,6 +66,9 @@ export function VersionHistory({
 }: VersionHistoryProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [counts, setCounts] = useState<{
     documentPath: string;
     versionKey: string;
@@ -71,6 +76,7 @@ export function VersionHistory({
     latestSavedText: string | null;
   } | null>(null);
   const messageTimerRef = useRef<number | undefined>(undefined);
+  const confirmDeleteRef = useRef<HTMLButtonElement>(null);
   const versionKey = useMemo(
     () => versions.map((version) => version.id).join("\n"),
     [versions],
@@ -147,6 +153,31 @@ export function VersionHistory({
     [],
   );
 
+  useEffect(() => {
+    setDeleteError(null);
+    setConfirmDeleteId(null);
+    setDeletingId(null);
+  }, [documentPath]);
+
+  useEffect(() => {
+    if (!open) {
+      setConfirmDeleteId(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (
+      confirmDeleteId &&
+      !versions.some((version) => version.id === confirmDeleteId)
+    ) {
+      setConfirmDeleteId(null);
+    }
+  }, [confirmDeleteId, versions]);
+
+  useEffect(() => {
+    confirmDeleteRef.current?.focus();
+  }, [confirmDeleteId]);
+
   const showMessage = useCallback((nextMessage: string) => {
     if (messageTimerRef.current !== undefined) {
       window.clearTimeout(messageTimerRef.current);
@@ -178,6 +209,22 @@ export function VersionHistory({
     }
   }, [onSave, showMessage]);
 
+  const deleteVersion = useCallback(
+    async (version: DocumentVersion) => {
+      setDeletingId(version.id);
+      setDeleteError(null);
+      try {
+        await onDelete(version.id);
+        setConfirmDeleteId(null);
+      } catch (error) {
+        setDeleteError(errorText(error));
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [onDelete],
+  );
+
   if (!open) {
     return null;
   }
@@ -203,7 +250,10 @@ export function VersionHistory({
             type="button"
             className="versions-current-main"
             aria-pressed={selectedVersionId === null}
-            onClick={onSelectCurrent}
+            onClick={() => {
+              setConfirmDeleteId(null);
+              onSelectCurrent();
+            }}
           >
             <span className="versions-item-number">Current</span>
             <span
@@ -241,38 +291,85 @@ export function VersionHistory({
         {versions.map((version, index) => {
           const changes = lineChanges[version.id];
           const previousVersion = versions[index + 1] ?? null;
+          const confirmingDelete = confirmDeleteId === version.id;
+          const deleting = deletingId === version.id;
           return (
-            <button
-              type="button"
-              className={`versions-item${selectedVersionId === version.id ? " versions-item-selected" : ""}`}
-              aria-pressed={selectedVersionId === version.id}
+            <div
+              className={`versions-item-row${selectedVersionId === version.id ? " versions-item-selected" : ""}`}
               key={version.id}
-              onClick={() => onSelectVersion(version, previousVersion)}
             >
-              <span className="versions-item-heading">
-                <span className="versions-item-number">V{version.number}</span>
-                <time className="versions-item-time" dateTime={new Date(version.createdMs).toISOString()}>
-                  {versionTime(version.createdMs)}
-                </time>
-              </span>
-              <span
-                className="versions-item-changes"
-                aria-label={
-                  readError
-                    ? "Line changes unavailable"
-                    : changes
-                      ? `${changes.removed} lines removed and ${changes.added} added compared with the previous version`
-                      : "Calculating line changes"
-                }
+              <button
+                type="button"
+                className="versions-item versions-item-main"
+                aria-pressed={selectedVersionId === version.id}
+                onClick={() => {
+                  setConfirmDeleteId(null);
+                  onSelectVersion(version, previousVersion);
+                }}
               >
-                <span className="versions-item-removed">
-                  −{readError ? "—" : changes?.removed ?? "…"}
+                <span className="versions-item-heading">
+                  <span className="versions-item-number">V{version.number}</span>
+                  <time
+                    className="versions-item-time"
+                    dateTime={new Date(version.createdMs).toISOString()}
+                  >
+                    {versionTime(version.createdMs)}
+                  </time>
                 </span>
-                <span className="versions-item-added">
-                  +{readError ? "—" : changes?.added ?? "…"}
+                <span
+                  className="versions-item-changes"
+                  aria-label={
+                    readError
+                      ? "Line changes unavailable"
+                      : changes
+                        ? `${changes.removed} lines removed and ${changes.added} added compared with the previous version`
+                        : "Calculating line changes"
+                  }
+                >
+                  <span className="versions-item-removed">
+                    −{readError ? "—" : changes?.removed ?? "…"}
+                  </span>
+                  <span className="versions-item-added">
+                    +{readError ? "—" : changes?.added ?? "…"}
+                  </span>
                 </span>
+              </button>
+              <span className="versions-item-actions">
+                {confirmingDelete ? (
+                  <>
+                    <button
+                      type="button"
+                      className="versions-item-delete-cancel"
+                      aria-label={`Cancel deleting V${version.number}`}
+                      disabled={deleting}
+                      onClick={() => setConfirmDeleteId(null)}
+                    >
+                      <CloseIcon />
+                    </button>
+                    <button
+                      ref={confirmDeleteRef}
+                      type="button"
+                      className="versions-item-delete-confirm"
+                      aria-label={`Delete V${version.number}`}
+                      disabled={deleting}
+                      onClick={() => void deleteVersion(version)}
+                    >
+                      <CheckIcon />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="versions-item-delete"
+                    aria-label={`Delete V${version.number}`}
+                    disabled={deletingId !== null}
+                    onClick={() => setConfirmDeleteId(version.id)}
+                  >
+                    <TrashIcon />
+                  </button>
+                )}
               </span>
-            </button>
+            </div>
           );
         })}
       </div>
@@ -288,6 +385,8 @@ export function VersionHistory({
             Retry
           </button>
         </div>
+      ) : deleteError ? (
+        <div className="versions-error" role="alert">{deleteError}</div>
       ) : saveError ? (
         <div className="versions-error" role="alert">{saveError}</div>
       ) : null}
