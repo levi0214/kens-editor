@@ -200,12 +200,12 @@ export function VersionHistory({
               className="versions-item-changes"
               aria-label={
                 currentChanges
-                  ? `${currentChanges.added} lines added and ${currentChanges.removed} removed compared with the latest saved version`
+                  ? `${currentChanges.removed} lines removed and ${currentChanges.added} added compared with the latest saved version`
                   : "Calculating line changes"
               }
             >
-              <span className="versions-item-added">+{currentChanges?.added ?? "…"}</span>
               <span className="versions-item-removed">−{currentChanges?.removed ?? "…"}</span>
+              <span className="versions-item-added">+{currentChanges?.added ?? "…"}</span>
             </span>
           </button>
           <button
@@ -243,12 +243,12 @@ export function VersionHistory({
                 className="versions-item-changes"
                 aria-label={
                   changes
-                    ? `${changes.added} lines added and ${changes.removed} removed compared with the previous version`
+                    ? `${changes.removed} lines removed and ${changes.added} added compared with the previous version`
                     : "Calculating line changes"
                 }
               >
-                <span className="versions-item-added">+{changes?.added ?? "…"}</span>
                 <span className="versions-item-removed">−{changes?.removed ?? "…"}</span>
+                <span className="versions-item-added">+{changes?.added ?? "…"}</span>
               </span>
             </button>
           );

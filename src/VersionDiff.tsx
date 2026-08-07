@@ -100,11 +100,15 @@ export function VersionDiff({
       }
     >
       <header className="version-diff-header">
-        <span className="version-diff-title">
+        <span className="version-diff-title version-diff-title-unified">
           <span>{previousVersion ? `V${previousVersion.number}` : "Start"}</span>
           <span className="version-diff-arrow" aria-hidden="true">
             →
           </span>
+          <strong>V{version.number}</strong>
+        </span>
+        <span className="version-diff-title-split" aria-hidden="true">
+          <span>{previousVersion ? `V${previousVersion.number}` : "Start"}</span>
           <strong>V{version.number}</strong>
         </span>
         <button

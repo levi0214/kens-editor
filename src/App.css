@@ -246,13 +246,13 @@ body,
 }
 
 .version-diff-header {
+  position: relative;
   box-sizing: border-box;
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  justify-content: space-between;
   min-height: 38px;
-  padding: 4px 12px 5px 21px;
+  padding: 4px 21px 5px;
   border-bottom: 1px solid rgb(127 127 127 / 13%);
   font: 12px/1.4 var(--app-font);
 }
@@ -267,11 +267,35 @@ body,
   font-weight: 600;
 }
 
+.version-diff-title-split {
+  display: none;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-self: stretch;
+  align-items: center;
+}
+
+.version-diff-title-split > :first-child {
+  padding: 0 0.7ch;
+}
+
+.version-diff-title-split > :last-child {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding: 0 0.7ch;
+  border-left: 1px solid rgb(127 127 127 / 14%);
+  font-weight: 600;
+}
+
 .version-diff-arrow {
   color: var(--statusbar-fg);
 }
 
 .version-diff-close {
+  position: absolute;
+  top: 5px;
+  right: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -409,6 +433,14 @@ body,
 
   .version-diff-unified {
     display: none;
+  }
+
+  .version-diff-title-unified {
+    display: none;
+  }
+
+  .version-diff-title-split {
+    display: grid;
   }
 
   .version-diff-split {
