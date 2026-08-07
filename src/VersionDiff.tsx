@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { buildDocumentDiff, type DocumentDiffLine } from "./documentDiff";
+import {
+  buildDocumentDiff,
+  splitDocumentDiffLines,
+  type DocumentDiffLine,
+} from "./documentDiff";
 import { CloseIcon } from "./statusBarIcons";
 import { readDocumentVersion, type DocumentVersion } from "./versions";
 
@@ -81,6 +85,10 @@ export function VersionDiff({
     () => (savedText === null ? null : buildDocumentDiff(savedText, currentText)),
     [currentText, savedText],
   );
+  const splitRows = useMemo(
+    () => (diff === null ? [] : splitDocumentDiffLines(diff.lines)),
+    [diff],
+  );
 
   return (
     <section className="version-diff" aria-label={`V${version.number} compared with current`}>
@@ -111,7 +119,31 @@ export function VersionDiff({
           ) : !diff.hasChanges ? (
             <p className="version-diff-state">No changes from V{version.number}.</p>
           ) : (
-            diff.lines.map((line, index) => <DiffLine line={line} key={index} />)
+            <>
+              <div className="version-diff-unified">
+                {diff.lines.map((line, index) => (
+                  <DiffLine line={line} key={index} />
+                ))}
+              </div>
+              <div className="version-diff-split">
+                {splitRows.map((row, index) =>
+                  row.kind === "separator" ? (
+                    <div className="version-diff-split-separator" aria-hidden="true" key={index}>
+                      ···
+                    </div>
+                  ) : (
+                    <div className="version-diff-split-row" key={index}>
+                      <div className="version-diff-split-cell">
+                        {row.left && <DiffLine line={row.left} />}
+                      </div>
+                      <div className="version-diff-split-cell version-diff-split-cell-right">
+                        {row.right && <DiffLine line={row.right} />}
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>

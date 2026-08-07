@@ -232,6 +232,8 @@ body,
 }
 
 .version-diff {
+  container-name: version-diff;
+  container-type: inline-size;
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -360,6 +362,36 @@ body,
   background: var(--diff-removed-word-bg);
 }
 
+.version-diff-split {
+  display: none;
+}
+
+.version-diff-split-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.version-diff-split-cell {
+  min-width: 0;
+}
+
+.version-diff-split-cell-right {
+  border-left: 1px solid rgb(127 127 127 / 14%);
+}
+
+.version-diff-split-cell > .version-diff-line {
+  height: 100%;
+}
+
+.version-diff-split-separator {
+  min-height: 1.5em;
+  padding-left: 1.4em;
+  color: var(--statusbar-fg);
+  opacity: 0.55;
+  user-select: none;
+}
+
 .version-diff-separator {
   min-height: 1.5em;
   padding-left: 1.4em;
@@ -376,6 +408,21 @@ body,
 
 .version-diff-state-error {
   color: #c44;
+}
+
+@container version-diff (min-width: 720px) {
+  .version-diff-content,
+  [data-max-width="narrow"] .version-diff-content {
+    max-width: none;
+  }
+
+  .version-diff-unified {
+    display: none;
+  }
+
+  .version-diff-split {
+    display: block;
+  }
 }
 
 [data-max-width="narrow"] .editor {
