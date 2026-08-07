@@ -1372,28 +1372,6 @@ function App() {
                   </button>
                 </span>
               )}
-              <span
-                className="chrome-tip-wrap"
-                onMouseEnter={() => showHint("unmarkdown")}
-                onMouseLeave={hideHint}
-                onFocus={() => showHint("unmarkdown")}
-                onBlur={hideHint}
-              >
-                <ChromeHint
-                  name="Unmarkdown"
-                  keys={["⇧", "⌘", "R"]}
-                  className="chrome-tip-left"
-                  visible={activeHint === "unmarkdown"}
-                />
-                <button
-                  type="button"
-                  className="statusbar-toggle"
-                  aria-label="Unmarkdown. ⌘⇧R."
-                  onClick={openUnmarkdownConfirm}
-                >
-                  <UnmarkdownIcon className="statusbar-toggle-icon" />
-                </button>
-              </span>
             </div>
           )}
           {saveError && (
@@ -1403,6 +1381,28 @@ function App() {
           )}
         </div>
         <div className="statusbar-controls">
+          <span
+            className="chrome-tip-wrap"
+            onMouseEnter={() => showHint("unmarkdown")}
+            onMouseLeave={hideHint}
+            onFocus={() => showHint("unmarkdown")}
+            onBlur={hideHint}
+          >
+            <ChromeHint
+              name="Unmarkdown"
+              keys={["⇧", "⌘", "R"]}
+              className="chrome-tip-right"
+              visible={activeHint === "unmarkdown"}
+            />
+            <button
+              type="button"
+              className="statusbar-toggle"
+              aria-label="Unmarkdown. ⌘⇧R."
+              onClick={openUnmarkdownConfirm}
+            >
+              <UnmarkdownIcon className="statusbar-toggle-icon" />
+            </button>
+          </span>
           <span
             className="chrome-tip-wrap"
             onMouseEnter={() => showHint("font")}
