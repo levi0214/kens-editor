@@ -520,33 +520,45 @@ function App() {
       }
 
       const documentPath = path;
-      const nextVersions = await deleteDocumentVersion(documentPath, versionId);
+      const catalog = versionCatalog;
+      if (
+        !catalog ||
+        catalog.documentPath !== documentPath ||
+        catalog.status !== "ready"
+      ) {
+        return;
+      }
+      const remaining = catalog.versions.filter(
+        (version) => version.id !== versionId,
+      );
+      const renumbered = remaining.map((version, index) => ({
+        ...version,
+        number: remaining.length - index,
+      }));
+
+      await deleteDocumentVersion(documentPath, versionId);
       if (currentPathRef.current !== documentPath) {
         return;
       }
 
-      setVersionCatalog({
-        documentPath,
-        status: "ready",
-        versions: nextVersions,
-      });
+      setVersionCatalog({ documentPath, status: "ready", versions: renumbered });
       setDiffSelection((current) => {
         if (!current) {
           return null;
         }
 
-        const selectedIndex = nextVersions.findIndex(
+        const selectedIndex = renumbered.findIndex(
           (version) => version.id === current.version.id,
         );
         return selectedIndex < 0
           ? null
           : {
-              version: nextVersions[selectedIndex],
-              previousVersion: nextVersions[selectedIndex + 1] ?? null,
+              version: renumbered[selectedIndex],
+              previousVersion: renumbered[selectedIndex + 1] ?? null,
             };
       });
     },
-    [path, versionsSupported],
+    [path, versionCatalog, versionsSupported],
   );
 
   const handleImageCountChange = useCallback(

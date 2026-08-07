@@ -491,10 +491,7 @@ fn read_document_version(document_path: String, version_id: String) -> Result<St
 }
 
 #[tauri::command]
-fn delete_document_version(
-    document_path: String,
-    version_id: String,
-) -> Result<Vec<DocumentVersion>, String> {
+fn delete_document_version(document_path: String, version_id: String) -> Result<(), String> {
     let dir = document_versions_dir(Path::new(&document_path))?;
     delete_document_version_in_dir(&dir, &version_id, |path| {
         trash::delete(path).map_err(|error| error.to_string())
@@ -505,14 +502,13 @@ fn delete_document_version_in_dir(
     dir: &Path,
     version_id: &str,
     delete: impl FnOnce(&Path) -> Result<(), String>,
-) -> Result<Vec<DocumentVersion>, String> {
+) -> Result<(), String> {
     let path = checked_version_path_in_dir(dir, version_id)?;
     if !path.is_file() {
         return Err("Version not found".to_string());
     }
 
-    delete(&path)?;
-    read_document_versions(dir)
+    delete(&path)
 }
 
 #[tauri::command]
@@ -893,17 +889,18 @@ mod tests {
     }
 
     #[test]
-    fn deleting_a_version_returns_the_renumbered_catalog() {
+    fn deleting_a_version_removes_its_file() {
         let dir = TestDir::new("delete-one-version");
         let first = save_document_version_in_dir(dir.path(), "first").unwrap();
         let second = save_document_version_in_dir(dir.path(), "second").unwrap();
 
-        let versions = delete_document_version_in_dir(dir.path(), &first.version.id, |path| {
+        delete_document_version_in_dir(dir.path(), &first.version.id, |path| {
             fs::remove_file(path).map_err(|error| error.to_string())
         })
         .unwrap();
 
         assert!(!dir.path().join(first.version.id).exists());
+        let versions = read_document_versions(dir.path()).unwrap();
         assert_eq!(versions.len(), 1);
         assert_eq!(versions[0].id, second.version.id);
         assert_eq!(versions[0].number, 1);

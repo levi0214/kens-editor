@@ -47,8 +47,8 @@ export async function readDocumentVersion(
 export async function deleteDocumentVersion(
   documentPath: string,
   versionId: string,
-): Promise<DocumentVersion[]> {
-  return invoke<DocumentVersion[]>("delete_document_version", {
+): Promise<void> {
+  await invoke("delete_document_version", {
     documentPath,
     versionId,
   });
