@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export interface DocumentVersion {
   id: string;
+  number: number;
   createdMs: number;
   preview: string;
 }

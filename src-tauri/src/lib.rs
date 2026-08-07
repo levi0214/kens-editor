@@ -362,6 +362,7 @@ struct VaultDocument {
 #[serde(rename_all = "camelCase")]
 struct DocumentVersion {
     id: String,
+    number: usize,
     created_ms: u64,
     preview: String,
 }
@@ -388,13 +389,23 @@ fn read_document_versions(dir: &Path) -> Result<Vec<DocumentVersion>, String> {
 
         let id = entry.file_name().to_string_lossy().into_owned();
         versions.push(DocumentVersion {
+            number: 0,
             created_ms: version_created_ms(&id).unwrap_or(modified_ms(&path)?),
             preview: file_preview(&path)?,
             id,
         });
     }
 
-    versions.sort_by(|left, right| right.created_ms.cmp(&left.created_ms));
+    versions.sort_by(|left, right| {
+        right
+            .created_ms
+            .cmp(&left.created_ms)
+            .then(right.id.cmp(&left.id))
+    });
+    let version_count = versions.len();
+    for (index, version) in versions.iter_mut().enumerate() {
+        version.number = version_count - index;
+    }
     Ok(versions)
 }
 
@@ -440,6 +451,7 @@ fn save_document_version(
         .map(|name| name.to_string_lossy().into_owned())
         .ok_or_else(|| "Could not name version".to_string())?;
     let version = DocumentVersion {
+        number: versions.len() + 1,
         created_ms: version_created_ms(&id).unwrap_or(modified_ms(&path)?),
         preview: preview_from_text(&contents),
         id,

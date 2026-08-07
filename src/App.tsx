@@ -139,7 +139,7 @@ function App() {
   const { flush, markLoaded, saveError } = useAutoSave(text, path);
   useFlushOnClose(flush);
   const { visible: chromeVisible, bump: bumpChrome } = useChromeIdle(
-    !pickerOpen && !imageTrayOpen && !versionsOpen && !saveError && !showWelcome,
+    !pickerOpen && !imageTrayOpen && !saveError && !showWelcome,
     chromeHovered,
   );
   useWindowFullscreen();
@@ -817,7 +817,6 @@ function App() {
         direction !== null &&
         !pickerOpen &&
         !imageTrayOpen &&
-        !versionsOpen &&
         !unmarkdownConfirmOpen &&
         onboardingComplete &&
         ready
@@ -911,7 +910,6 @@ function App() {
     cycleTheme,
     showWelcome,
     unmarkdownConfirmOpen,
-    versionsOpen,
   ]);
 
   return (
@@ -1021,6 +1019,18 @@ function App() {
             spellCheck={false}
             wrap={wrap === "wrap" ? "soft" : "off"}
             disabled={!ready}
+          />
+        )}
+        {versionsOpen && path && versionsSupported && onboardingComplete && (
+          <VersionHistory
+            documentPath={path}
+            currentText={text}
+            beforeSave={flush}
+            onClose={() => {
+              setVersionsOpen(false);
+              focusEditor(editorRef.current);
+            }}
+            onVersionsChange={setVersionCount}
           />
         )}
         {(imageDragging || imageFeedback) && (
@@ -1289,18 +1299,6 @@ function App() {
             focusEditor(editorRef.current);
           }}
           onCountChange={handleImageCountChange}
-        />
-      )}
-      {versionsOpen && path && versionsSupported && onboardingComplete && (
-        <VersionHistory
-          documentPath={path}
-          currentText={text}
-          beforeSave={flush}
-          onClose={() => {
-            setVersionsOpen(false);
-            focusEditor(editorRef.current);
-          }}
-          onVersionsChange={setVersionCount}
         />
       )}
     </div>
