@@ -215,6 +215,10 @@ fn version_created_ms(name: &str) -> Option<u64> {
 
 fn unique_version_path(dir: &Path) -> PathBuf {
     let stamp = Local::now().format("%Y-%m-%d_%H%M%S_%3f");
+    unique_version_path_with_stamp(dir, &stamp.to_string())
+}
+
+fn unique_version_path_with_stamp(dir: &Path, stamp: &str) -> PathBuf {
     let mut path = dir.join(format!("{stamp}.txt"));
 
     if !path.exists() {
@@ -429,10 +433,14 @@ fn save_document_version(
     contents: String,
 ) -> Result<SaveVersionResult, String> {
     let dir = document_versions_dir(Path::new(&document_path))?;
-    let versions = read_document_versions(&dir)?;
+    save_document_version_in_dir(&dir, &contents)
+}
+
+fn save_document_version_in_dir(dir: &Path, contents: &str) -> Result<SaveVersionResult, String> {
+    let versions = read_document_versions(dir)?;
 
     if let Some(latest) = versions.first() {
-        let latest_path = checked_version_path(Path::new(&document_path), &latest.id)?;
+        let latest_path = dir.join(&latest.id);
         if fs::read_to_string(latest_path).map_err(|error| error.to_string())? == contents {
             return Ok(SaveVersionResult {
                 created: false,
@@ -766,4 +774,128 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    static NEXT_TEST_DIR: AtomicU64 = AtomicU64::new(0);
+
+    struct TestDir(PathBuf);
+
+    impl TestDir {
+        fn new(name: &str) -> Self {
+            let nonce = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("test clock should follow the Unix epoch")
+                .as_nanos();
+            let sequence = NEXT_TEST_DIR.fetch_add(1, Ordering::Relaxed);
+            let path = std::env::temp_dir().join(format!(
+                "kens-editor-{name}-{}-{nonce}-{sequence}",
+                std::process::id()
+            ));
+            fs::create_dir_all(&path).expect("test directory should be created");
+            Self(path)
+        }
+
+        fn path(&self) -> &Path {
+            &self.0
+        }
+    }
+
+    impl Drop for TestDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn saves_first_version_and_refuses_duplicate() {
+        let dir = TestDir::new("save-version");
+
+        let first =
+            save_document_version_in_dir(dir.path(), "first").expect("first version should save");
+        assert!(first.created);
+        assert_eq!(first.version.number, 1);
+        assert_eq!(
+            fs::read_to_string(dir.path().join(&first.version.id))
+                .expect("saved version should be readable"),
+            "first"
+        );
+
+        let duplicate = save_document_version_in_dir(dir.path(), "first")
+            .expect("duplicate check should succeed");
+        assert!(!duplicate.created);
+        assert_eq!(duplicate.version.id, first.version.id);
+        assert_eq!(read_document_versions(dir.path()).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn saved_versions_keep_stable_order_and_numbers() {
+        let dir = TestDir::new("version-order");
+        let first = save_document_version_in_dir(dir.path(), "first").unwrap();
+        let second = save_document_version_in_dir(dir.path(), "second").unwrap();
+
+        let versions = read_document_versions(dir.path()).unwrap();
+        assert_eq!(versions.len(), 2);
+        assert_eq!(versions[0].id, second.version.id);
+        assert_eq!(versions[0].number, 2);
+        assert_eq!(versions[1].id, first.version.id);
+        assert_eq!(versions[1].number, 1);
+    }
+
+    #[test]
+    fn version_order_uses_id_to_break_timestamp_ties() {
+        let dir = TestDir::new("version-tie");
+        let older = "2026-08-07_120000_001.txt";
+        let tied_first = "2026-08-07_120000_002.txt";
+        let tied_second = "2026-08-07_120000_002_2.txt";
+        fs::write(dir.path().join(older), "older").unwrap();
+        fs::write(dir.path().join(tied_first), "first").unwrap();
+        fs::write(dir.path().join(tied_second), "second").unwrap();
+
+        let versions = read_document_versions(dir.path()).unwrap();
+        assert_eq!(versions[0].id, tied_second);
+        assert_eq!(versions[1].id, tied_first);
+        assert_eq!(versions[2].id, older);
+        assert_eq!(
+            versions
+                .iter()
+                .map(|version| version.number)
+                .collect::<Vec<_>>(),
+            vec![3, 2, 1]
+        );
+    }
+
+    #[test]
+    fn same_millisecond_version_names_do_not_collide() {
+        let dir = TestDir::new("version-collision");
+        let stamp = "2026-08-07_120000_123";
+        let first = unique_version_path_with_stamp(dir.path(), stamp);
+        fs::write(&first, "first").unwrap();
+        let second = unique_version_path_with_stamp(dir.path(), stamp);
+
+        assert_eq!(first.file_name().unwrap(), "2026-08-07_120000_123.txt");
+        assert_eq!(second.file_name().unwrap(), "2026-08-07_120000_123_2.txt");
+    }
+
+    #[test]
+    fn rejects_version_ids_that_can_escape_the_version_directory() {
+        let document = Path::new("unused.txt");
+
+        for id in [
+            "../version.txt",
+            "folder/version.txt",
+            "/tmp/version.txt",
+            "version.md",
+        ] {
+            assert_eq!(
+                checked_version_path(document, id).unwrap_err(),
+                "Invalid version"
+            );
+        }
+    }
 }
