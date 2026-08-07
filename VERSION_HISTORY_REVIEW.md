@@ -83,6 +83,9 @@ Relevant code: `src/VersionHistory.tsx` and `src-tauri/src/lib.rs`.
 
 ## P1: Make loading and saving states reliable
 
+**Status: Done** — failed history loads can be retried, and repeated shortcuts
+keep the latest save request; committed in `e95d4b2` and `93ef93f`.
+
 Failures while reading snapshot bodies are currently swallowed, leaving the
 line counts at `…` indefinitely. A save request from the keyboard can also run
 while the sidebar's initial list is still loading, allowing the older list
@@ -121,11 +124,9 @@ Relevant code: `src/documentDiff.ts`.
 
 ## P1: Add tests around stored versions and windows
 
-**Status: Partly done.** Window expansion and contraction are covered in
-`f5b2718` and `1cad7e2`. Version saving, duplicate detection, ordering,
-numbering, filename collisions, and invalid IDs are covered in `9bc9e72`.
-Non-vault documents, deletion cleanup, Chinese text, blank lines, and unequal
-split blocks still need coverage.
+**Status: Done.** Window behavior is covered in `f5b2718` and `1cad7e2`.
+Stored versions and cleanup boundaries are covered in `9bc9e72` and `d042fc3`.
+Diff edge cases are covered in `e7e5ed2` and `362ee38`.
 
 The TypeScript diff model has six tests. The Rust test suite currently compiles
 but contains no tests, and `planWindowExpansion` has no direct tests.
@@ -147,6 +148,9 @@ Relevant code: `src-tauri/src/lib.rs`, `src/windowExpansion.ts`, and
 `tests/documentDiff.test.mjs`.
 
 ## P2: Expand omitted content in place
+
+**Status: Done** — expanding an omission preserves its screen position;
+committed in `7a0b378`.
 
 Clicking `···` currently expands the full document and resets the scroll
 position to the top. The interaction would feel more direct if the clicked
