@@ -10,7 +10,9 @@ Plain text only, saved as `.txt` in `~/Documents/KensEditor/`. No Markdown. Not 
 
 ![Images](screenshots/images.png)
 
-Every save keeps a version. The version history shows what changed and lets you copy or restore any of them.
+## Update 2026-08-08
+
+New: every save keeps a version. The version history shows what changed and lets you copy or restore any of them.
 
 ![Version history](screenshots/versions.png)
 
