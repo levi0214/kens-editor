@@ -12,7 +12,7 @@ Plain text only, saved as `.txt` in `~/Documents/KensEditor/`. No Markdown. Not 
 
 ## Update 2026-08-08
 
-New: every save keeps a version. The version history shows what changed and lets you copy or restore any of them.
+New: save a version anytime (⌥⌘S). The version history shows what changed in each and lets you copy or restore any of them.
 
 ![Version history](screenshots/versions.png)
 
