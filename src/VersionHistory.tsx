@@ -37,13 +37,18 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+const VERSION_DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+});
+const VERSION_CLOCK_FORMAT = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+});
+
 function versionTime(createdMs: number): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(createdMs));
+  const created = new Date(createdMs);
+  return `${VERSION_DATE_FORMAT.format(created)} · ${VERSION_CLOCK_FORMAT.format(created)}`;
 }
 
 const DIFFSTAT_SEGMENT_COUNT = 3;
