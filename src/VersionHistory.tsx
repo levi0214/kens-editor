@@ -349,16 +349,24 @@ export function VersionHistory({
               muteWhenUnchanged
             />
           </button>
-          <button
-            type="button"
-            className="versions-current-save"
-            aria-label="Save current version. Command Option S."
-            title="Save current version · ⌥⌘S"
-            disabled={saving || saveIsRedundant}
-            onClick={() => void saveVersion()}
-          >
-            {saving ? "Saving…" : message ?? "Save"}
-          </button>
+          <span className="versions-current-save-wrap">
+            <button
+              type="button"
+              className="versions-current-save"
+              aria-label="Save current version. Command Option S."
+              aria-keyshortcuts="Alt+Meta+S"
+              disabled={saving || saveIsRedundant}
+              onClick={() => void saveVersion()}
+            >
+              {saving ? "Saving…" : message ?? "Save"}
+            </button>
+            <ChromeHint
+              name="Save version"
+              keys={["⌥", "⌘", "S"]}
+              className="chrome-tip-below chrome-tip-right version-action-tip"
+              visible={false}
+            />
+          </span>
         </div>
         {versions.length === 0 && (
           <p className="versions-empty">No saved versions yet.</p>

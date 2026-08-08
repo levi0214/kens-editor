@@ -1743,10 +1743,14 @@ body,
   outline-offset: -2px;
 }
 
-.versions-current-save {
+.versions-current-save-wrap {
   position: absolute;
   top: 9px;
   right: 12px;
+  display: inline-flex;
+}
+
+.versions-current-save {
   min-width: 50px;
   min-height: 26px;
   padding: 0 9px;
@@ -1770,6 +1774,12 @@ body,
 .versions-current-save:disabled {
   cursor: default;
   opacity: 0.5;
+}
+
+.versions-current-save-wrap:hover .version-action-tip,
+.versions-current-save-wrap:focus-within .version-action-tip {
+  opacity: 0.72;
+  transition-delay: 250ms;
 }
 
 .versions-item-actions {
