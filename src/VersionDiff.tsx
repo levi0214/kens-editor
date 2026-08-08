@@ -4,6 +4,7 @@ import {
   splitDocumentDiffLines,
   type DocumentDiffLine,
 } from "./documentDiff";
+import { ChromeHint } from "./keyHint";
 import { CheckIcon, CloseIcon, CopyIcon } from "./statusBarIcons";
 import { type DocumentVersion } from "./versions";
 
@@ -66,9 +67,11 @@ function VersionCopyButton({
       onClick={onCopy}
     >
       {copied ? <CheckIcon /> : <CopyIcon />}
-      <span className="version-diff-copy-label">
-        {copied ? "Copied" : "Copy this version"}
-      </span>
+      <ChromeHint
+        name={copied ? "Copied" : "Copy version"}
+        className="chrome-tip-below version-action-tip"
+        visible={false}
+      />
     </button>
   );
 }
@@ -396,9 +399,12 @@ export function VersionDiff({
             onClick={onClose}
           >
             <CloseIcon />
-            <span className="version-close-label" aria-hidden="true">
-              Close · Esc
-            </span>
+            <ChromeHint
+              name="Close"
+              keys={["Esc"]}
+              className="chrome-tip-below chrome-tip-right version-action-tip"
+              visible={false}
+            />
           </button>
         </span>
       </header>

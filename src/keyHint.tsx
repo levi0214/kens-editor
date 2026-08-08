@@ -50,7 +50,7 @@ export function ChromeHint({
       ) : (
         <>
           <span className="chrome-tip-name">{name}</span>
-          <KeyHints keys={keys ?? []} />
+          {keys && keys.length > 0 ? <KeyHints keys={keys} /> : null}
         </>
       )}
     </span>

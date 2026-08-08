@@ -3,6 +3,7 @@ import {
   countChangedLines,
   type DocumentLineChanges,
 } from "./documentDiff";
+import { ChromeHint } from "./keyHint";
 import { CheckIcon, CloseIcon, TrashIcon } from "./statusBarIcons";
 import {
   type DocumentVersion,
@@ -237,13 +238,16 @@ export function VersionHistory({
           type="button"
           className="versions-sidebar-close"
           aria-label="Close versions"
-          aria-keyshortcuts="Escape"
+          aria-keyshortcuts={selectedVersionId === null ? "Escape" : undefined}
           onClick={onClose}
         >
           <CloseIcon />
-          <span className="version-close-label" aria-hidden="true">
-            Close · Esc
-          </span>
+          <ChromeHint
+            name={selectedVersionId === null ? "Close" : "Close versions"}
+            keys={selectedVersionId === null ? ["Esc"] : undefined}
+            className="chrome-tip-below chrome-tip-right version-action-tip"
+            visible={false}
+          />
         </button>
       </header>
 
