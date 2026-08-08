@@ -232,6 +232,7 @@ export function VersionHistory({
   return (
     <aside className="versions-sidebar" aria-label="Versions">
       <header className="versions-sidebar-header">
+        <span className="versions-sidebar-title">Versions</span>
         <button
           type="button"
           className="versions-sidebar-close"
