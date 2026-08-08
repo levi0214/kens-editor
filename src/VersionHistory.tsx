@@ -237,9 +237,13 @@ export function VersionHistory({
           type="button"
           className="versions-sidebar-close"
           aria-label="Close versions"
+          aria-keyshortcuts="Escape"
           onClick={onClose}
         >
           <CloseIcon />
+          <span className="version-close-label" aria-hidden="true">
+            Close · Esc
+          </span>
         </button>
       </header>
 
@@ -267,10 +271,16 @@ export function VersionHistory({
                     : "Calculating line changes"
               }
             >
-              <span className="versions-item-removed">
+              <span
+                className="versions-item-removed"
+                data-zero={currentChanges?.removed === 0 || undefined}
+              >
                 −{readError ? "—" : currentChanges?.removed ?? "…"}
               </span>
-              <span className="versions-item-added">
+              <span
+                className="versions-item-added"
+                data-zero={currentChanges?.added === 0 || undefined}
+              >
                 +{readError ? "—" : currentChanges?.added ?? "…"}
               </span>
             </span>
@@ -296,7 +306,7 @@ export function VersionHistory({
           const deleting = deletingId === version.id;
           return (
             <div
-              className={`versions-item-row${selectedVersionId === version.id ? " versions-item-selected" : ""}`}
+              className={`versions-item-row${selectedVersionId === version.id ? " versions-item-selected" : ""}${confirmingDelete ? " versions-item-confirming-delete" : ""}`}
               key={version.id}
             >
               <button
@@ -327,10 +337,16 @@ export function VersionHistory({
                         : "Calculating line changes"
                   }
                 >
-                  <span className="versions-item-removed">
+                  <span
+                    className="versions-item-removed"
+                    data-zero={changes?.removed === 0 || undefined}
+                  >
                     −{readError ? "—" : changes?.removed ?? "…"}
                   </span>
-                  <span className="versions-item-added">
+                  <span
+                    className="versions-item-added"
+                    data-zero={changes?.added === 0 || undefined}
+                  >
                     +{readError ? "—" : changes?.added ?? "…"}
                   </span>
                 </span>

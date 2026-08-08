@@ -392,9 +392,13 @@ export function VersionDiff({
             type="button"
             className="version-diff-close"
             aria-label="Close diff"
+            aria-keyshortcuts="Escape"
             onClick={onClose}
           >
             <CloseIcon />
+            <span className="version-close-label" aria-hidden="true">
+              Close · Esc
+            </span>
           </button>
         </span>
       </header>
