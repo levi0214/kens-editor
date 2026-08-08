@@ -46,6 +46,85 @@ function versionTime(createdMs: number): string {
   }).format(new Date(createdMs));
 }
 
+const DIFFSTAT_SEGMENTS = [0, 1, 2] as const;
+
+function changeSegments(value: number, maximum: number): number {
+  if (value === 0 || maximum === 0) {
+    return 0;
+  }
+  return Math.ceil(Math.sqrt(value / maximum) * DIFFSTAT_SEGMENTS.length);
+}
+
+function VersionChanges({
+  changes,
+  comparison,
+  maximum,
+  readError,
+}: {
+  changes: DocumentLineChanges | undefined | null;
+  comparison: string;
+  maximum: number;
+  readError: string | null;
+}) {
+  const unavailable = readError !== null || changes == null;
+  const removed = changes?.removed ?? 0;
+  const added = changes?.added ?? 0;
+  const removedSegments = changeSegments(removed, maximum);
+  const addedSegments = changeSegments(added, maximum);
+
+  return (
+    <span
+      className="versions-item-changes"
+      aria-label={
+        readError
+          ? "Line changes unavailable"
+          : changes
+            ? `${removed} lines removed and ${added} added compared with ${comparison}`
+            : "Calculating line changes"
+      }
+    >
+      <span
+        className="versions-item-diffstat"
+        data-unavailable={unavailable || undefined}
+        aria-hidden="true"
+      >
+        <span className="versions-item-diffstat-side versions-item-diffstat-removed">
+          {DIFFSTAT_SEGMENTS.map((segment) => (
+            <span
+              key={segment}
+              className="versions-item-diffstat-segment"
+              data-active={
+                segment >= DIFFSTAT_SEGMENTS.length - removedSegments || undefined
+              }
+            />
+          ))}
+        </span>
+        <span className="versions-item-diffstat-side versions-item-diffstat-added">
+          {DIFFSTAT_SEGMENTS.map((segment) => (
+            <span
+              key={segment}
+              className="versions-item-diffstat-segment"
+              data-active={segment < addedSegments || undefined}
+            />
+          ))}
+        </span>
+      </span>
+      <span
+        className="versions-item-removed"
+        data-zero={changes?.removed === 0 || undefined}
+      >
+        −{readError ? "—" : changes?.removed ?? "…"}
+      </span>
+      <span
+        className="versions-item-added"
+        data-zero={changes?.added === 0 || undefined}
+      >
+        +{readError ? "—" : changes?.added ?? "…"}
+      </span>
+    </span>
+  );
+}
+
 export function VersionHistory({
   open,
   documentPath,
@@ -140,6 +219,16 @@ export function VersionHistory({
     }
     return countChangedLines(counts.latestSavedText ?? "", currentText);
   }, [counts, countsAreCurrent, currentText, open]);
+  const maximumChange = useMemo(() => {
+    const changes = Object.values(lineChanges);
+    if (currentChanges) {
+      changes.push(currentChanges);
+    }
+    return changes.reduce(
+      (maximum, change) => Math.max(maximum, change.removed, change.added),
+      0,
+    );
+  }, [currentChanges, lineChanges]);
   const saveIsRedundant =
     countsAreCurrent &&
     counts.latestSavedText !== null &&
@@ -265,29 +354,12 @@ export function VersionHistory({
             }}
           >
             <span className="versions-item-number">Current</span>
-            <span
-              className="versions-item-changes"
-              aria-label={
-                readError
-                  ? "Line changes unavailable"
-                  : currentChanges
-                    ? `${currentChanges.removed} lines removed and ${currentChanges.added} added compared with the latest saved version`
-                    : "Calculating line changes"
-              }
-            >
-              <span
-                className="versions-item-removed"
-                data-zero={currentChanges?.removed === 0 || undefined}
-              >
-                −{readError ? "—" : currentChanges?.removed ?? "…"}
-              </span>
-              <span
-                className="versions-item-added"
-                data-zero={currentChanges?.added === 0 || undefined}
-              >
-                +{readError ? "—" : currentChanges?.added ?? "…"}
-              </span>
-            </span>
+            <VersionChanges
+              changes={currentChanges}
+              comparison="the latest saved version"
+              maximum={maximumChange}
+              readError={readError}
+            />
           </button>
           <button
             type="button"
@@ -331,29 +403,12 @@ export function VersionHistory({
                     {versionTime(version.createdMs)}
                   </time>
                 </span>
-                <span
-                  className="versions-item-changes"
-                  aria-label={
-                    readError
-                      ? "Line changes unavailable"
-                      : changes
-                        ? `${changes.removed} lines removed and ${changes.added} added compared with the previous version`
-                        : "Calculating line changes"
-                  }
-                >
-                  <span
-                    className="versions-item-removed"
-                    data-zero={changes?.removed === 0 || undefined}
-                  >
-                    −{readError ? "—" : changes?.removed ?? "…"}
-                  </span>
-                  <span
-                    className="versions-item-added"
-                    data-zero={changes?.added === 0 || undefined}
-                  >
-                    +{readError ? "—" : changes?.added ?? "…"}
-                  </span>
-                </span>
+                <VersionChanges
+                  changes={changes}
+                  comparison="the previous version"
+                  maximum={maximumChange}
+                  readError={readError}
+                />
               </button>
               <span className="versions-item-actions">
                 {confirmingDelete ? (

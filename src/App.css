@@ -1848,10 +1848,49 @@ body,
 
 .versions-item-changes {
   display: flex;
+  align-items: center;
   gap: 9px;
   margin-top: 5px;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+}
+
+.versions-item-diffstat {
+  display: inline-grid;
+  grid-template-columns: 11px 11px;
+  gap: 2px;
+  width: 24px;
+}
+
+.versions-item-diffstat-side {
+  display: grid;
+  grid-template-columns: repeat(3, 3px);
+  gap: 1px;
+  height: 3px;
+}
+
+.versions-item-diffstat-segment {
+  width: 3px;
+  height: 3px;
+  border-radius: 1px;
+  background: rgb(127 127 127 / 12%);
+}
+
+.versions-item-diffstat-segment[data-active] {
+  background: currentColor;
+  opacity: 0.72;
+}
+
+.versions-item-diffstat-removed {
+  color: var(--diff-removed-fg);
+}
+
+.versions-item-diffstat-added {
+  color: var(--diff-added-fg);
+}
+
+.versions-item-diffstat[data-unavailable] {
+  opacity: 0.35;
 }
 
 @media (hover: none), (pointer: coarse) {
