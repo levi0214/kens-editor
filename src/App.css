@@ -1701,6 +1701,10 @@ body,
 }
 
 .versions-current-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 14px;
   padding-right: 78px;
 }
 
@@ -1888,7 +1892,8 @@ body,
   font-variant-numeric: tabular-nums;
 }
 
-.versions-item-main .versions-item-changes {
+.versions-item-main .versions-item-changes,
+.versions-current-main .versions-item-changes {
   grid-column: 1;
   grid-row: 1;
   margin-top: 0;

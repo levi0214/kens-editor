@@ -334,7 +334,9 @@ export function VersionHistory({
               onSelectCurrent();
             }}
           >
-            <span className="versions-item-number">Current</span>
+            <span className="versions-item-heading">
+              <span className="versions-item-number">Current</span>
+            </span>
             <VersionChanges
               changes={currentChanges}
               comparison="the latest saved version"
