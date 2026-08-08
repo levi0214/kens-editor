@@ -1948,16 +1948,10 @@ body,
   color: var(--diff-stat-removed-fg);
 }
 
-.versions-item-removed[data-zero] {
-  color: color-mix(
-    in srgb,
-    var(--diff-removed-fg) 38%,
-    var(--statusbar-fg)
-  );
-}
-
-.versions-item-added[data-zero] {
-  color: color-mix(in srgb, var(--diff-added-fg) 38%, var(--statusbar-fg));
+.versions-current .versions-item-changes[data-unchanged] .versions-item-removed,
+.versions-current .versions-item-changes[data-unchanged] .versions-item-added {
+  color: var(--statusbar-fg);
+  opacity: 0.68;
 }
 
 .versions-empty {

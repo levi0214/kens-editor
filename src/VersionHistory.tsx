@@ -60,21 +60,26 @@ function VersionChanges({
   comparison,
   maximum,
   readError,
+  muteWhenUnchanged = false,
 }: {
   changes: DocumentLineChanges | undefined | null;
   comparison: string;
   maximum: number;
   readError: string | null;
+  muteWhenUnchanged?: boolean;
 }) {
   const removed = changes?.removed ?? 0;
   const added = changes?.added ?? 0;
   const removedSegments = changeSegments(removed, maximum);
   const addedSegments = changeSegments(added, maximum);
+  const unchanged =
+    muteWhenUnchanged && changes?.removed === 0 && changes.added === 0;
 
   return (
     <span
       className="versions-item-changes"
       data-unavailable={readError !== null || changes == null || undefined}
+      data-unchanged={unchanged || undefined}
       aria-label={
         readError
           ? "Line changes unavailable"
@@ -100,16 +105,10 @@ function VersionChanges({
         </span>
       )}
       <span className="versions-item-change-values">
-        <span
-          className="versions-item-removed"
-          data-zero={changes?.removed === 0 || undefined}
-        >
+        <span className="versions-item-removed">
           −{readError ? "—" : changes?.removed ?? "…"}
         </span>
-        <span
-          className="versions-item-added"
-          data-zero={changes?.added === 0 || undefined}
-        >
+        <span className="versions-item-added">
           +{readError ? "—" : changes?.added ?? "…"}
         </span>
       </span>
@@ -351,6 +350,7 @@ export function VersionHistory({
               comparison="the latest saved version"
               maximum={maximumChange}
               readError={readError}
+              muteWhenUnchanged
             />
           </button>
           <button
