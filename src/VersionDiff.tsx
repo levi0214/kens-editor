@@ -115,10 +115,12 @@ function DiffLine({
       <button
         type="button"
         className="version-diff-separator"
-        aria-label="Show full document"
+        aria-label="Show omitted unchanged lines"
         onClick={(event) => onExpand(event.currentTarget)}
       >
-        ···
+        <span className="version-diff-separator-mark" aria-hidden="true">
+          ···
+        </span>
       </button>
     );
   }
@@ -443,13 +445,18 @@ export function VersionDiff({
                     <button
                       type="button"
                       className="version-diff-split-separator"
-                      aria-label="Show full document"
+                      aria-label="Show omitted unchanged lines"
                       onClick={(event) =>
                         expandFrom(event.currentTarget, "split")
                       }
                       key={index}
                     >
-                      ···
+                      <span
+                        className="version-diff-separator-mark"
+                        aria-hidden="true"
+                      >
+                        ···
+                      </span>
                     </button>
                   ) : (
                     <div className="version-diff-split-row" key={index}>

@@ -511,10 +511,12 @@ body,
 
 .version-diff-split-separator,
 .version-diff-separator {
-  display: block;
+  display: flex;
   width: 100%;
   min-height: 1.75em;
-  padding: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 0 0.7ch;
   border: 0;
   color: var(--statusbar-fg);
   background: none;
@@ -523,6 +525,22 @@ body,
   opacity: 0.55;
   cursor: pointer;
   user-select: none;
+}
+
+.version-diff-split-separator::before,
+.version-diff-split-separator::after,
+.version-diff-separator::before,
+.version-diff-separator::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.24;
+}
+
+.version-diff-separator-mark {
+  font-size: 0.72em;
+  letter-spacing: 0.16em;
 }
 
 .version-diff-split-separator:hover,
