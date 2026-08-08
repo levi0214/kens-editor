@@ -1671,16 +1671,28 @@ body,
 }
 
 .versions-item-row {
-  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 0;
   border-bottom: 1px solid rgb(127 127 127 / 10%);
+}
+
+.versions-item-row:hover,
+.versions-item-row:focus-within {
+  grid-template-columns: minmax(0, 1fr) 34px;
+}
+
+.versions-item-row.versions-item-confirming-delete {
+  grid-template-columns: minmax(0, 1fr) 62px;
 }
 
 .versions-item-main {
   display: grid;
+  grid-column: 1;
+  grid-row: 1;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   column-gap: 14px;
-  padding-right: 44px;
+  padding-right: 14px;
 }
 
 .versions-current {
@@ -1739,13 +1751,20 @@ body,
 }
 
 .versions-item-actions {
-  position: absolute;
-  top: 50%;
-  right: 10px;
   display: flex;
+  grid-column: 2;
+  grid-row: 1;
   align-items: center;
   gap: 4px;
-  transform: translateY(-50%);
+  min-width: 0;
+  padding-right: 0;
+  overflow: hidden;
+}
+
+.versions-item-row:hover .versions-item-actions,
+.versions-item-row:focus-within .versions-item-actions,
+.versions-item-confirming-delete .versions-item-actions {
+  padding-right: 10px;
 }
 
 .versions-item-delete,
@@ -1899,6 +1918,14 @@ body,
 }
 
 @media (hover: none), (pointer: coarse) {
+  .versions-item-row {
+    grid-template-columns: minmax(0, 1fr) 34px;
+  }
+
+  .versions-item-actions {
+    padding-right: 10px;
+  }
+
   .versions-item-delete {
     opacity: 0.55;
     pointer-events: auto;
