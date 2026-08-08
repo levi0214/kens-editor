@@ -47,31 +47,31 @@ function versionTime(createdMs: number): string {
 }
 
 const DIFFSTAT_SEGMENT_COUNT = 3;
+const DIFFSTAT_SEGMENT_THRESHOLDS = [1, 4, 16];
 
-function changeSegments(value: number, maximum: number): number {
-  if (value === 0 || maximum === 0) {
-    return 0;
-  }
-  return Math.ceil(Math.sqrt(value / maximum) * DIFFSTAT_SEGMENT_COUNT);
+function changeSegments(value: number): number {
+  return Math.min(
+    DIFFSTAT_SEGMENT_COUNT,
+    DIFFSTAT_SEGMENT_THRESHOLDS.filter((threshold) => value >= threshold)
+      .length,
+  );
 }
 
 function VersionChanges({
   changes,
   comparison,
-  maximum,
   readError,
   muteWhenUnchanged = false,
 }: {
   changes: DocumentLineChanges | undefined | null;
   comparison: string;
-  maximum: number;
   readError: string | null;
   muteWhenUnchanged?: boolean;
 }) {
   const removed = changes?.removed ?? 0;
   const added = changes?.added ?? 0;
-  const removedSegments = changeSegments(removed, maximum);
-  const addedSegments = changeSegments(added, maximum);
+  const removedSegments = changeSegments(removed);
+  const addedSegments = changeSegments(added);
   const unchanged =
     muteWhenUnchanged && changes?.removed === 0 && changes.added === 0;
 
@@ -210,16 +210,6 @@ export function VersionHistory({
     }
     return countChangedLines(counts.latestSavedText ?? "", currentText);
   }, [counts, countsAreCurrent, currentText, open]);
-  const maximumChange = useMemo(() => {
-    const changes = Object.values(lineChanges);
-    if (currentChanges) {
-      changes.push(currentChanges);
-    }
-    return changes.reduce(
-      (maximum, change) => Math.max(maximum, change.removed, change.added),
-      0,
-    );
-  }, [currentChanges, lineChanges]);
   const saveIsRedundant =
     countsAreCurrent &&
     counts.latestSavedText !== null &&
@@ -348,7 +338,6 @@ export function VersionHistory({
             <VersionChanges
               changes={currentChanges}
               comparison="the latest saved version"
-              maximum={maximumChange}
               readError={readError}
               muteWhenUnchanged
             />
@@ -398,7 +387,6 @@ export function VersionHistory({
                 <VersionChanges
                   changes={changes}
                   comparison="the previous version"
-                  maximum={maximumChange}
                   readError={readError}
                 />
               </button>
