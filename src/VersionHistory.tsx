@@ -46,13 +46,13 @@ function versionTime(createdMs: number): string {
   }).format(new Date(createdMs));
 }
 
-const DIFFSTAT_SEGMENTS = [0, 1, 2] as const;
+const DIFFSTAT_SEGMENT_COUNT = 3;
 
 function changeSegments(value: number, maximum: number): number {
   if (value === 0 || maximum === 0) {
     return 0;
   }
-  return Math.ceil(Math.sqrt(value / maximum) * DIFFSTAT_SEGMENTS.length);
+  return Math.ceil(Math.sqrt(value / maximum) * DIFFSTAT_SEGMENT_COUNT);
 }
 
 function VersionChanges({
@@ -66,7 +66,6 @@ function VersionChanges({
   maximum: number;
   readError: string | null;
 }) {
-  const unavailable = readError !== null || changes == null;
   const removed = changes?.removed ?? 0;
   const added = changes?.added ?? 0;
   const removedSegments = changeSegments(removed, maximum);
@@ -75,6 +74,7 @@ function VersionChanges({
   return (
     <span
       className="versions-item-changes"
+      data-unavailable={readError !== null || changes == null || undefined}
       aria-label={
         readError
           ? "Line changes unavailable"
@@ -83,43 +83,35 @@ function VersionChanges({
             : "Calculating line changes"
       }
     >
-      <span
-        className="versions-item-diffstat"
-        data-unavailable={unavailable || undefined}
-        aria-hidden="true"
-      >
-        <span className="versions-item-diffstat-side versions-item-diffstat-removed">
-          {DIFFSTAT_SEGMENTS.map((segment) => (
+      {removedSegments + addedSegments > 0 && (
+        <span className="versions-item-diffstat" aria-hidden="true">
+          {Array.from({ length: removedSegments }, (_, segment) => (
             <span
-              key={segment}
-              className="versions-item-diffstat-segment"
-              data-active={
-                segment >= DIFFSTAT_SEGMENTS.length - removedSegments || undefined
-              }
+              key={`removed-${segment}`}
+              className="versions-item-diffstat-segment versions-item-removed"
+            />
+          ))}
+          {Array.from({ length: addedSegments }, (_, segment) => (
+            <span
+              key={`added-${segment}`}
+              className="versions-item-diffstat-segment versions-item-added"
             />
           ))}
         </span>
-        <span className="versions-item-diffstat-side versions-item-diffstat-added">
-          {DIFFSTAT_SEGMENTS.map((segment) => (
-            <span
-              key={segment}
-              className="versions-item-diffstat-segment"
-              data-active={segment < addedSegments || undefined}
-            />
-          ))}
+      )}
+      <span className="versions-item-change-values">
+        <span
+          className="versions-item-removed"
+          data-zero={changes?.removed === 0 || undefined}
+        >
+          −{readError ? "—" : changes?.removed ?? "…"}
         </span>
-      </span>
-      <span
-        className="versions-item-removed"
-        data-zero={changes?.removed === 0 || undefined}
-      >
-        −{readError ? "—" : changes?.removed ?? "…"}
-      </span>
-      <span
-        className="versions-item-added"
-        data-zero={changes?.added === 0 || undefined}
-      >
-        +{readError ? "—" : changes?.added ?? "…"}
+        <span
+          className="versions-item-added"
+          data-zero={changes?.added === 0 || undefined}
+        >
+          +{readError ? "—" : changes?.added ?? "…"}
+        </span>
       </span>
     </span>
   );
