@@ -10,6 +10,10 @@ Plain text only, saved as `.txt` in `~/Documents/KensEditor/`. No Markdown. Not 
 
 ![Images](screenshots/images.png)
 
+Every save keeps a version. The version history shows what changed and lets you copy or restore any of them.
+
+![Version history](screenshots/versions.png)
+
 ## Run it
 
 Needs macOS, [Node.js](https://nodejs.org/), and [Rust](https://rustup.rs/).
