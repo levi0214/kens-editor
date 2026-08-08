@@ -103,6 +103,10 @@ function diffLineKey(line: DocumentDiffLine): string | null {
   return `${line.kind}:${line.oldNumber ?? ""}:${line.newNumber ?? ""}`;
 }
 
+function omittedLinesText(count: number): string {
+  return `${count} unchanged ${count === 1 ? "line" : "lines"}`;
+}
+
 function DiffLine({
   line,
   onExpand,
@@ -111,15 +115,16 @@ function DiffLine({
   onExpand: (button: HTMLButtonElement) => void;
 }) {
   if (line.kind === "separator") {
+    const label = omittedLinesText(line.omitted);
     return (
       <button
         type="button"
         className="version-diff-separator"
-        aria-label="Show omitted unchanged lines"
+        aria-label={`Show ${label}`}
         onClick={(event) => onExpand(event.currentTarget)}
       >
-        <span className="version-diff-separator-mark" aria-hidden="true">
-          ···
+        <span className="version-diff-separator-label" aria-hidden="true">
+          … {label} …
         </span>
       </button>
     );
@@ -445,17 +450,17 @@ export function VersionDiff({
                     <button
                       type="button"
                       className="version-diff-split-separator"
-                      aria-label="Show omitted unchanged lines"
+                      aria-label={`Show ${omittedLinesText(row.omitted)}`}
                       onClick={(event) =>
                         expandFrom(event.currentTarget, "split")
                       }
                       key={index}
                     >
                       <span
-                        className="version-diff-separator-mark"
+                        className="version-diff-separator-label"
                         aria-hidden="true"
                       >
-                        ···
+                        … {omittedLinesText(row.omitted)} …
                       </span>
                     </button>
                   ) : (

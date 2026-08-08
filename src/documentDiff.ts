@@ -11,13 +11,15 @@ export interface DocumentDiffSpan {
   changed: boolean;
 }
 
-export interface DocumentDiffLine {
-  kind: DocumentDiffLineKind;
-  oldNumber?: number;
-  newNumber?: number;
-  text?: string;
-  spans?: DocumentDiffSpan[];
-}
+export type DocumentDiffLine =
+  | { kind: "separator"; omitted: number }
+  | {
+      kind: Exclude<DocumentDiffLineKind, "separator">;
+      oldNumber?: number;
+      newNumber?: number;
+      text?: string;
+      spans?: DocumentDiffSpan[];
+    };
 
 export interface DocumentDiff {
   lines: DocumentDiffLine[];
@@ -25,7 +27,7 @@ export interface DocumentDiff {
 }
 
 export type SplitDocumentDiffRow =
-  | { kind: "separator" }
+  | { kind: "separator"; omitted: number }
   | {
       kind: "lines";
       left: DocumentDiffLine | null;
@@ -79,7 +81,7 @@ export function splitDocumentDiffLines(
   for (let index = 0; index < lines.length; ) {
     const line = lines[index];
     if (line.kind === "separator") {
-      rows.push({ kind: "separator" });
+      rows.push({ kind: "separator", omitted: line.omitted });
       index += 1;
       continue;
     }
@@ -169,16 +171,24 @@ function collapseContext(
 
     if (!changeBefore) {
       if (run.length > contextLines) {
-        output.push({ kind: "separator" });
+        output.push({
+          kind: "separator",
+          omitted: run.length - contextLines,
+        });
       }
-      output.push(...run.slice(-contextLines));
+      if (contextLines > 0) {
+        output.push(...run.slice(-contextLines));
+      }
       continue;
     }
 
     if (!changeAfter) {
       output.push(...run.slice(0, contextLines));
       if (run.length > contextLines) {
-        output.push({ kind: "separator" });
+        output.push({
+          kind: "separator",
+          omitted: run.length - contextLines,
+        });
       }
       continue;
     }
@@ -189,8 +199,13 @@ function collapseContext(
     }
 
     output.push(...run.slice(0, contextLines));
-    output.push({ kind: "separator" });
-    output.push(...run.slice(-contextLines));
+    output.push({
+      kind: "separator",
+      omitted: run.length - contextLines * 2,
+    });
+    if (contextLines > 0) {
+      output.push(...run.slice(-contextLines));
+    }
   }
 
   return output;

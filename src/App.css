@@ -511,12 +511,10 @@ body,
 
 .version-diff-split-separator,
 .version-diff-separator {
-  display: flex;
+  display: block;
   width: 100%;
   min-height: 1.75em;
-  align-items: center;
-  gap: 10px;
-  padding: 0 0.7ch;
+  padding: 0;
   border: 0;
   color: var(--statusbar-fg);
   background: none;
@@ -527,20 +525,9 @@ body,
   user-select: none;
 }
 
-.version-diff-split-separator::before,
-.version-diff-split-separator::after,
-.version-diff-separator::before,
-.version-diff-separator::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.24;
-}
-
-.version-diff-separator-mark {
+.version-diff-separator-label {
   font-size: 0.72em;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.01em;
 }
 
 .version-diff-split-separator:hover,

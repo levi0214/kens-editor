@@ -118,11 +118,32 @@ test("long unchanged sections collapse around changes", () => {
 
   const result = buildDocumentDiff(`${oldLines.join("\n")}\n`, `${newLines.join("\n")}\n`, 2);
 
-  assert.equal(result.lines.filter((line) => line.kind === "separator").length, 2);
+  const separators = result.lines.filter((line) => line.kind === "separator");
+  assert.deepEqual(
+    separators.map((line) => line.omitted),
+    [9, 10],
+  );
+  assert.deepEqual(
+    splitDocumentDiffLines(result.lines)
+      .filter((row) => row.kind === "separator")
+      .map((row) => row.omitted),
+    [9, 10],
+  );
   assert.equal(result.lines.some((line) => line.text === "line 1"), false);
   assert.equal(result.lines.some((line) => line.text === "line 24"), false);
   assert.equal(result.lines.some((line) => line.text === "line 11"), true);
   assert.equal(result.lines.some((line) => line.text === "line 14"), true);
+});
+
+test("zero context omits every unchanged line", () => {
+  const result = buildDocumentDiff("one\ntwo\nthree\n", "one\nchanged\nthree\n", 0);
+
+  assert.deepEqual(
+    result.lines.map((line) =>
+      line.kind === "separator" ? [line.kind, line.omitted] : line.kind,
+    ),
+    [["separator", 1], "removed", "added", ["separator", 1]],
+  );
 });
 
 test("full-document diffs keep unchanged sections", () => {
