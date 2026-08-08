@@ -267,6 +267,12 @@ body,
   font-weight: 600;
 }
 
+.version-diff-version {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .version-diff-title-split {
   display: none;
   width: 100%;
@@ -343,6 +349,71 @@ body,
 .version-diff-close svg {
   width: 16px;
   height: 16px;
+}
+
+.version-diff-copy {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  color: var(--statusbar-fg);
+  background: none;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.version-diff-copy:hover:not(:disabled),
+.version-diff-copy:focus-visible:not(:disabled) {
+  opacity: 1;
+  background: rgb(127 127 127 / 10%);
+}
+
+.version-diff-copy:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.version-diff-copy:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.version-diff-copy svg {
+  width: 14px;
+  height: 14px;
+}
+
+.version-diff-copy-label {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  z-index: 10;
+  transform: translateX(-50%);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--statusbar-fg);
+  background: var(--editor-bg);
+  font: 12px/1.3 var(--app-font);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.version-diff-copy:hover:not(:disabled) .version-diff-copy-label,
+.version-diff-copy:focus-visible:not(:disabled) .version-diff-copy-label {
+  opacity: 0.72;
+  transition-delay: 250ms;
+}
+
+.version-diff-copy[data-copied] .version-diff-copy-label {
+  opacity: 0.72;
+  transition-delay: 0ms;
 }
 
 .version-diff-scroll {

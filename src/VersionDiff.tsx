@@ -4,7 +4,7 @@ import {
   splitDocumentDiffLines,
   type DocumentDiffLine,
 } from "./documentDiff";
-import { CloseIcon } from "./statusBarIcons";
+import { CheckIcon, CloseIcon, CopyIcon } from "./statusBarIcons";
 import { type DocumentVersion } from "./versions";
 
 interface VersionDiffProps {
@@ -42,6 +42,36 @@ type DiffLoadState =
       status: "error";
       message: string;
     };
+
+type CopySide = "previous" | "selected";
+
+function VersionCopyButton({
+  copied,
+  disabled,
+  label,
+  onCopy,
+}: {
+  copied: boolean;
+  disabled: boolean;
+  label: number;
+  onCopy: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="version-diff-copy"
+      aria-label={`Copy the full text of V${label}`}
+      disabled={disabled}
+      data-copied={copied || undefined}
+      onClick={onCopy}
+    >
+      {copied ? <CheckIcon /> : <CopyIcon />}
+      <span className="version-diff-copy-label">
+        {copied ? "Copied" : "Copy this version"}
+      </span>
+    </button>
+  );
+}
 
 function loadStateMatches(
   state: DiffLoadState | null,
@@ -122,7 +152,9 @@ export function VersionDiff({
 }: VersionDiffProps) {
   const [loadState, setLoadState] = useState<DiffLoadState | null>(null);
   const [showFullDocument, setShowFullDocument] = useState(false);
+  const [copiedSide, setCopiedSide] = useState<CopySide | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const copyTimerRef = useRef<number | undefined>(undefined);
   const pendingAnchorRef = useRef<{
     key: string | null;
     top: number;
@@ -141,6 +173,11 @@ export function VersionDiff({
 
   useEffect(() => {
     let active = true;
+    setCopiedSide(null);
+    if (copyTimerRef.current !== undefined) {
+      window.clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = undefined;
+    }
     setLoadState({
       documentPath,
       previousVersionId,
@@ -207,6 +244,39 @@ export function VersionDiff({
     () => (diff === null ? [] : splitDocumentDiffLines(diff.lines)),
     [diff],
   );
+  useEffect(
+    () => () => {
+      if (copyTimerRef.current !== undefined) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const copyVersion = useCallback(
+    async (side: CopySide) => {
+      if (currentLoadState?.status !== "loaded") {
+        return;
+      }
+      const text =
+        side === "previous" ? currentLoadState.previous : currentLoadState.selected;
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopiedSide(side);
+        if (copyTimerRef.current !== undefined) {
+          window.clearTimeout(copyTimerRef.current);
+        }
+        copyTimerRef.current = window.setTimeout(() => {
+          setCopiedSide(null);
+          copyTimerRef.current = undefined;
+        }, 1400);
+      } catch {
+        // Clipboard unavailable; leave the button as Copy.
+      }
+    },
+    [currentLoadState],
+  );
+
   const expandFrom = useCallback(
     (button: HTMLButtonElement, view: "unified" | "split") => {
       const previous = button.previousElementSibling;
@@ -254,15 +324,53 @@ export function VersionDiff({
     >
       <header className="version-diff-header">
         <span className="version-diff-title version-diff-title-unified">
-          <span>{previousVersion ? `V${previousVersion.number}` : "Start"}</span>
+          <span className="version-diff-version">
+            <span>
+              {previousVersion ? `V${previousVersion.number}` : "Start"}
+            </span>
+            {previousVersion && (
+              <VersionCopyButton
+                copied={copiedSide === "previous"}
+                disabled={currentLoadState?.status !== "loaded"}
+                label={previousVersion.number}
+                onCopy={() => void copyVersion("previous")}
+              />
+            )}
+          </span>
           <span className="version-diff-arrow" aria-hidden="true">
             →
           </span>
-          <strong>V{version.number}</strong>
+          <strong className="version-diff-version">
+            <span>V{version.number}</span>
+            <VersionCopyButton
+              copied={copiedSide === "selected"}
+              disabled={currentLoadState?.status !== "loaded"}
+              label={version.number}
+              onCopy={() => void copyVersion("selected")}
+            />
+          </strong>
         </span>
-        <span className="version-diff-title-split" aria-hidden="true">
-          <span>{previousVersion ? `V${previousVersion.number}` : "Start"}</span>
-          <strong>V{version.number}</strong>
+        <span className="version-diff-title-split">
+          <span className="version-diff-version">
+            <span>{previousVersion ? `V${previousVersion.number}` : "Start"}</span>
+            {previousVersion && (
+              <VersionCopyButton
+                copied={copiedSide === "previous"}
+                disabled={currentLoadState?.status !== "loaded"}
+                label={previousVersion.number}
+                onCopy={() => void copyVersion("previous")}
+              />
+            )}
+          </span>
+          <strong className="version-diff-version">
+            <span>V{version.number}</span>
+            <VersionCopyButton
+              copied={copiedSide === "selected"}
+              disabled={currentLoadState?.status !== "loaded"}
+              label={version.number}
+              onCopy={() => void copyVersion("selected")}
+            />
+          </strong>
         </span>
         <span className="version-diff-controls">
           {showFullDocument && (
