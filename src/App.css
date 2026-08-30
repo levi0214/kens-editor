@@ -4,6 +4,8 @@ body,
   height: 100%;
   margin: 0;
   font-family: var(--app-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background: var(--editor-bg);
   color: var(--editor-fg);
 }
