@@ -1,8 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <rect width="1024" height="1024" fill="#1e1e1e" />
-  <g fill="none" stroke="#e8e8e8" stroke-width="56" stroke-linecap="round">
-    <line x1="256" y1="400" x2="768" y2="400" />
-    <line x1="256" y1="512" x2="768" y2="512" />
-    <line x1="256" y1="624" x2="768" y2="624" />
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1d1d1d"/>
+  <rect x="118" y="144" width="228" height="68" rx="24" fill="#777672"/>
+  <rect x="142" y="222" width="228" height="68" rx="24" fill="#aaa9a5"/>
+  <rect x="166" y="300" width="228" height="68" rx="24" fill="#f2f0ea"/>
 </svg>
