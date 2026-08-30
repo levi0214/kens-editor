@@ -15,6 +15,7 @@ body,
   --editor-fg: #1c1b19;
   --editor-bg: #faf9f6;
   --editor-font-size: 18px;
+  --editor-line-height: 1.6;
   --statusbar-fg: #6b6966;
   --app-font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --new-doc-flash: rgb(0 0 0 / 0.1);
@@ -224,7 +225,7 @@ body,
   padding: var(--editor-padding-top) 21px var(--editor-padding-bottom);
   resize: none;
   outline: none;
-  font: var(--editor-font-size) / 1.5 var(--app-font);
+  font: var(--editor-font-size) / var(--editor-line-height) var(--app-font);
   color: var(--editor-fg);
   background: transparent;
   white-space: pre-wrap;
@@ -430,7 +431,7 @@ body,
   width: 100%;
   margin: 0 auto;
   padding: 16px 21px clamp(48px, 8vh, 96px);
-  font: var(--editor-font-size) / 1.5 var(--app-font);
+  font: var(--editor-font-size) / var(--editor-line-height) var(--app-font);
 }
 
 [data-max-width="narrow"] .version-diff-content {
@@ -440,7 +441,7 @@ body,
 .version-diff-line {
   display: grid;
   grid-template-columns: 1.8ch minmax(0, 1fr);
-  min-height: 1.5em;
+  min-height: calc(var(--editor-line-height) * 1em);
 }
 
 .version-diff-line::before {
