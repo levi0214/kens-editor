@@ -20,7 +20,7 @@ import {
   WrapOffIcon,
   WrapOnIcon,
 } from "./statusBarIcons";
-import { textToPngBytes } from "./exportImage";
+import { renderTextToPng, type RenderedImage } from "./exportImage";
 import {
   addDocumentImageFiles,
   addDocumentImages,
@@ -75,6 +75,7 @@ import { ChromeHint } from "./keyHint";
 import { completeOnboarding, initialOnboardingStatus, resolveOnboardingStatus } from "./onboarding";
 import { WelcomeScreen } from "./WelcomeScreen";
 import { UnmarkdownConfirm } from "./UnmarkdownConfirm";
+import { ExportPreview } from "./ExportPreview";
 import { useUnmarkdown } from "./useUnmarkdown";
 import { indentSelectedLines, outdentSelectedLines } from "./indent";
 import { VersionHistory } from "./VersionHistory";
@@ -199,6 +200,7 @@ function App() {
   const [imageCount, setImageCount] = useState(0);
   const [imageDragging, setImageDragging] = useState(false);
   const [imageFeedback, setImageFeedback] = useState<string | null>(null);
+  const [exportPreview, setExportPreview] = useState<RenderedImage | null>(null);
   const [newDocPulse, setNewDocPulse] = useState(false);
   const [fontSize, setFontSize] = useState<FontSize>(storedFontSize);
   const [wrap, setWrap] = useState<WrapMode>(storedWrap);
@@ -739,8 +741,17 @@ function App() {
     await saveToPath(selected);
   }, [path, saveToPath]);
 
-  const exportAsImage = useCallback(async () => {
-    if (text.trim().length === 0) {
+  const closeExport = useCallback(() => {
+    setExportPreview((previous) => {
+      if (previous) {
+        URL.revokeObjectURL(previous.url);
+      }
+      return null;
+    });
+  }, []);
+
+  const confirmExport = useCallback(async () => {
+    if (!exportPreview) {
       return;
     }
     const base = path
@@ -755,16 +766,34 @@ function App() {
       return;
     }
     try {
-      const bytes = await textToPngBytes(text);
       await invoke("save_image_file", {
         path: selected,
-        bytes: Array.from(bytes),
+        bytes: Array.from(exportPreview.bytes),
       });
+      closeExport();
       showImageFeedback("Exported image");
     } catch (error) {
       showImageFeedback(errorText(error));
     }
-  }, [path, showImageFeedback, text]);
+  }, [closeExport, exportPreview, path, showImageFeedback]);
+
+  const exportAsImage = useCallback(async () => {
+    if (text.trim().length === 0) {
+      return;
+    }
+    try {
+      const rendered = await renderTextToPng(text);
+      setExportPreview((previous) => {
+        if (previous) {
+          URL.revokeObjectURL(previous.url);
+        }
+        return rendered;
+      });
+      bumpChrome();
+    } catch (error) {
+      showImageFeedback(errorText(error));
+    }
+  }, [bumpChrome, showImageFeedback, text]);
 
   const handleDocumentDeleted = useCallback(
     async (deletedPath: string) => {
@@ -1658,6 +1687,17 @@ function App() {
         <UnmarkdownConfirm
           onConfirm={confirmUnmarkdown}
           onCancel={cancelUnmarkdownConfirm}
+        />
+      )}
+      {exportPreview && (
+        <ExportPreview
+          url={exportPreview.url}
+          width={exportPreview.width}
+          height={exportPreview.height}
+          onConfirm={() => {
+            void confirmExport();
+          }}
+          onCancel={closeExport}
         />
       )}
       {pickerOpen && onboardingComplete && (

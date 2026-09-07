@@ -1,27 +1,44 @@
 // Render the editor's plain text into a single tall PNG card, like a
 // photograph of a page. No markdown, no parsing — the text is drawn as-is.
+//
+// The default is a narrow portrait card that reads well on a phone: a stable
+// content column (~400px) with a slightly larger baseline font.
 
 const FONT = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
-const FONT_SIZE = 18;
+const DEFAULT_FONT_SIZE = 18;
+const DEFAULT_CONTENT_WIDTH = 400;
 const LINE_HEIGHT = 1.6;
-const PAD_X = 48;
-const PAD_Y = 56;
+const PAD_X = 40;
+const PAD_Y = 64;
 const BG = "#faf9f6";
 const FG = "#1c1b19";
 
 export interface ExportImageOptions {
-  // Content column width in "ch" (the width of "0" in the font). Default 72.
-  widthCh?: number;
+  // Content text column width in CSS pixels. Default 400 (narrow, mobile).
+  contentWidth?: number;
+  // Font size in CSS pixels. Default 18.
+  fontSize?: number;
   // Pixel density. Higher = sharper, bigger file. Default 2.
   scale?: number;
 }
 
-export async function textToPngBytes(
+export interface RenderedImage {
+  // Object URL for preview. The caller revokes it when done.
+  url: string;
+  bytes: Uint8Array;
+  width: number;
+  height: number;
+}
+
+export async function renderTextToPng(
   text: string,
   options: ExportImageOptions = {},
-): Promise<Uint8Array> {
-  const widthCh = options.widthCh ?? 72;
+): Promise<RenderedImage> {
+  const fontSize = options.fontSize ?? DEFAULT_FONT_SIZE;
+  const contentWidth = options.contentWidth ?? DEFAULT_CONTENT_WIDTH;
   const scale = options.scale ?? 2;
+  const maxWidth = Math.ceil(contentWidth);
+  const lineHeight = fontSize * LINE_HEIGHT;
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -29,13 +46,7 @@ export async function textToPngBytes(
     throw new Error("Canvas 2D is not available");
   }
 
-  ctx.font = font(FONT_SIZE);
-  const charWidth = ctx.measureText("0").width || FONT_SIZE * 0.6;
-  const maxWidth = Math.ceil(widthCh * charWidth);
-  const lineHeight = FONT_SIZE * LINE_HEIGHT;
-
   const lines = wrapText(text, maxWidth, (s) => ctx.measureText(s).width);
-
   const width = maxWidth + PAD_X * 2;
   const height = Math.max(PAD_Y * 2, PAD_Y * 2 + lines.length * lineHeight);
 
@@ -47,7 +58,7 @@ export async function textToPngBytes(
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, width, height);
 
-  ctx.font = font(FONT_SIZE);
+  ctx.font = font(fontSize);
   ctx.fillStyle = FG;
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
@@ -66,7 +77,12 @@ export async function textToPngBytes(
     throw new Error("Failed to render PNG");
   }
 
-  return new Uint8Array(await blob.arrayBuffer());
+  return {
+    url: URL.createObjectURL(blob),
+    bytes: new Uint8Array(await blob.arrayBuffer()),
+    width,
+    height,
+  };
 }
 
 function font(px: number): string {
