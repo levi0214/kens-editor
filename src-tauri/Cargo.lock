@@ -1586,7 +1586,7 @@ dependencies = [
 
 [[package]]
 name = "kens-editor"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "chrono",
  "dirs",
