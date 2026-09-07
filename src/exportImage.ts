@@ -46,6 +46,10 @@ export async function renderTextToPng(
     throw new Error("Canvas 2D is not available");
   }
 
+  // The wrap measures glyph widths, so the font must be set first or the
+  // measurement uses the canvas default (10px sans-serif) and the lines are
+  // computed far too narrow, then drawn wide off the right edge.
+  ctx.font = font(fontSize);
   const lines = wrapText(text, maxWidth, (s) => ctx.measureText(s).width);
   const width = maxWidth + PAD_X * 2;
   const height = Math.max(PAD_Y * 2, PAD_Y * 2 + lines.length * lineHeight);
