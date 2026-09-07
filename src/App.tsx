@@ -6,6 +6,7 @@ import { DocumentPicker } from "./DocumentPicker";
 import { ImageTray } from "./ImageTray";
 import { flipDirection } from "./documentNav";
 import {
+  ExportIcon,
   FontSizeIcon,
   FullWidthIcon,
   ImagesIcon,
@@ -19,6 +20,7 @@ import {
   WrapOffIcon,
   WrapOnIcon,
 } from "./statusBarIcons";
+import { textToPngBytes } from "./exportImage";
 import {
   addDocumentImageFiles,
   addDocumentImages,
@@ -141,6 +143,7 @@ function App() {
     openFile: () => {},
     saveFile: () => {},
     saveFileAs: () => {},
+    exportAsImage: () => {},
     togglePicker: () => {},
     toggleImages: () => {},
     toggleVersions: () => {},
@@ -736,6 +739,33 @@ function App() {
     await saveToPath(selected);
   }, [path, saveToPath]);
 
+  const exportAsImage = useCallback(async () => {
+    if (text.trim().length === 0) {
+      return;
+    }
+    const base = path
+      ? (path.split(/[/\\]/).pop() ?? "note").replace(/\.txt$/i, "")
+      : "note";
+    const dir = path ? path.replace(/[^/\\]+$/, "") : "";
+    const selected = await save({
+      defaultPath: `${dir}${base}.png`,
+      filters: [{ name: "PNG Image", extensions: ["png"] }],
+    });
+    if (selected === null) {
+      return;
+    }
+    try {
+      const bytes = await textToPngBytes(text);
+      await invoke("save_image_file", {
+        path: selected,
+        bytes: Array.from(bytes),
+      });
+      showImageFeedback("Exported image");
+    } catch (error) {
+      showImageFeedback(errorText(error));
+    }
+  }, [path, showImageFeedback, text]);
+
   const handleDocumentDeleted = useCallback(
     async (deletedPath: string) => {
       forgetDraft(deletedPath);
@@ -912,6 +942,9 @@ function App() {
       saveFileAs: () => {
         void saveFileAs();
       },
+      exportAsImage: () => {
+        void exportAsImage();
+      },
       togglePicker,
       toggleImages: toggleImageTray,
       toggleVersions,
@@ -919,6 +952,7 @@ function App() {
       unmarkdown: openUnmarkdownConfirm,
     };
   }, [
+    exportAsImage,
     flush,
     newDocument,
     openFile,
@@ -1011,6 +1045,13 @@ function App() {
             text: "Save Current Version",
             accelerator: "CmdOrCtrl+Alt+S",
             action: () => menuActionsRef.current.saveVersion(),
+          }),
+          await separator(),
+          await MenuItem.new({
+            id: "export-image",
+            text: "Export as Image",
+            accelerator: "CmdOrCtrl+Shift+E",
+            action: () => menuActionsRef.current.exportAsImage(),
           }),
           await separator(),
           await PredefinedMenuItem.new({ item: "CloseWindow" }),
@@ -1112,6 +1153,7 @@ function App() {
         key === "o" ||
         key === "p" ||
         key === "s" ||
+        (key === "e" && event.shiftKey) ||
         (key === "v" && event.altKey);
       if (isTauri() && menuOwned) {
         return;
@@ -1141,6 +1183,9 @@ function App() {
       } else if (key === "s") {
         event.preventDefault();
         void flush();
+      } else if (key === "e" && event.shiftKey) {
+        event.preventDefault();
+        void exportAsImage();
       } else if (key === "-" || key === "_") {
         event.preventDefault();
         decreaseFontSize();
@@ -1421,6 +1466,30 @@ function App() {
                   </button>
                 </span>
               )}
+              <span
+                className="chrome-tip-wrap"
+                onMouseEnter={() => showHint("export")}
+                onMouseLeave={hideHint}
+                onFocus={() => showHint("export")}
+                onBlur={hideHint}
+              >
+                <ChromeHint
+                  name="Export"
+                  keys={["⇧", "⌘", "E"]}
+                  className="chrome-tip-left"
+                  visible={activeHint === "export"}
+                />
+                <button
+                  type="button"
+                  className="statusbar-toggle"
+                  aria-label="Export as image. ⌘⇧E."
+                  onClick={() => {
+                    void exportAsImage();
+                  }}
+                >
+                  <ExportIcon className="statusbar-toggle-icon" />
+                </button>
+              </span>
             </div>
           )}
           {saveError && (

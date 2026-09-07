@@ -131,6 +131,16 @@ export function VersionsIcon(props: IconProps) {
   );
 }
 
+export function ExportIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M8 9.5V2.5" />
+      <path d="M5.5 5 8 2.5 10.5 5" />
+      <path d="M2.5 9.5v3.25a.75.75 0 0 0 .75.75h9.5a.75.75 0 0 0 .75-.75V9.5" />
+    </Icon>
+  );
+}
+
 export function FinderIcon(props: IconProps) {
   return (
     <Icon strokeLinejoin="round" {...props}>

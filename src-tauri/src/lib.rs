@@ -435,6 +435,16 @@ fn write_text_file(path: String, contents: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn save_image_file(path: String, bytes: Vec<u8>) -> Result<(), String> {
+    if bytes.is_empty() {
+        return Err("Image is empty".to_string());
+    }
+    let path = PathBuf::from(&path);
+    fs::write(&path, bytes).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 fn list_document_versions(document_path: String) -> Result<Vec<DocumentVersion>, String> {
     let dir = document_versions_dir(Path::new(&document_path))?;
     read_document_versions(&dir)
@@ -795,6 +805,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_text_file,
             write_text_file,
+            save_image_file,
             list_document_versions,
             save_document_version,
             read_document_version,
