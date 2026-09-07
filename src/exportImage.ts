@@ -6,40 +6,23 @@
 
 const FONT =
   'ui-monospace, SFMono-Regular, Menlo, "PingFang SC", "Hiragino Sans GB", Monaco, Consolas, monospace';
-const DEFAULT_FONT_SIZE = 18;
-const DEFAULT_CONTENT_WIDTH = 320;
+const FONT_SIZE = 18;
+const CONTENT_WIDTH = 320; // ~18 CJK chars at 18px
+const SCALE = 2;
 const LINE_HEIGHT = 1.6;
 const PAD_X = 20;
 const PAD_Y = 32;
 const BG = "#faf9f6";
 const FG = "#1c1b19";
 
-export interface ExportImageOptions {
-  // Content text column width in CSS pixels. Default 320 (~18 CJK at 18px).
-  contentWidth?: number;
-  // Font size in CSS pixels. Default 18.
-  fontSize?: number;
-  // Pixel density. Higher = sharper, bigger file. Default 2.
-  scale?: number;
-}
-
 export interface RenderedImage {
   // Object URL for preview. The caller revokes it when done.
   url: string;
   bytes: Uint8Array;
-  width: number;
-  height: number;
 }
 
-export async function renderTextToPng(
-  text: string,
-  options: ExportImageOptions = {},
-): Promise<RenderedImage> {
-  const fontSize = options.fontSize ?? DEFAULT_FONT_SIZE;
-  const contentWidth = options.contentWidth ?? DEFAULT_CONTENT_WIDTH;
-  const scale = options.scale ?? 2;
-  const maxWidth = Math.ceil(contentWidth);
-  const lineHeight = fontSize * LINE_HEIGHT;
+export async function renderTextToPng(text: string): Promise<RenderedImage> {
+  const lineHeight = FONT_SIZE * LINE_HEIGHT;
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -50,20 +33,20 @@ export async function renderTextToPng(
   // The wrap measures glyph widths, so the font must be set first or the
   // measurement uses the canvas default (10px sans-serif) and the lines are
   // computed far too narrow, then drawn wide off the right edge.
-  ctx.font = font(fontSize);
-  const lines = wrapText(text, maxWidth, (s) => ctx.measureText(s).width);
-  const width = maxWidth + PAD_X * 2;
-  const height = Math.max(PAD_Y * 2, PAD_Y * 2 + lines.length * lineHeight);
+  ctx.font = font();
+  const lines = wrapText(text, CONTENT_WIDTH, (s) => ctx.measureText(s).width);
+  const width = CONTENT_WIDTH + PAD_X * 2;
+  const height = PAD_Y * 2 + lines.length * lineHeight;
 
-  canvas.width = Math.ceil(width * scale);
-  canvas.height = Math.ceil(height * scale);
+  canvas.width = Math.ceil(width * SCALE);
+  canvas.height = Math.ceil(height * SCALE);
 
   // Draw in CSS pixels, not device pixels.
-  ctx.scale(scale, scale);
+  ctx.scale(SCALE, SCALE);
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, width, height);
 
-  ctx.font = font(fontSize);
+  ctx.font = font();
   ctx.fillStyle = FG;
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
@@ -85,13 +68,11 @@ export async function renderTextToPng(
   return {
     url: URL.createObjectURL(blob),
     bytes: new Uint8Array(await blob.arrayBuffer()),
-    width,
-    height,
   };
 }
 
-function font(px: number): string {
-  return `${px}px ${FONT}`;
+function font(): string {
+  return `${FONT_SIZE}px ${FONT}`;
 }
 
 // Trailing punctuation stays on the previous line; opening punctuation
