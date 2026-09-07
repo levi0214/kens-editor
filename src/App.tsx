@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { desktopDir, join } from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -757,9 +758,15 @@ function App() {
     const base = path
       ? (path.split(/[/\\]/).pop() ?? "note").replace(/\.txt$/i, "")
       : "note";
-    const dir = path ? path.replace(/[^/\\]+$/, "") : "";
+    let defaultPath = `${base}.png`;
+    try {
+      defaultPath = await join(await desktopDir(), `${base}.png`);
+    } catch {
+      const dir = path ? path.replace(/[^/\\]+$/, "") : "";
+      defaultPath = dir ? `${dir}${base}.png` : `${base}.png`;
+    }
     const selected = await save({
-      defaultPath: `${dir}${base}.png`,
+      defaultPath,
       filters: [{ name: "PNG Image", extensions: ["png"] }],
     });
     if (selected === null) {
