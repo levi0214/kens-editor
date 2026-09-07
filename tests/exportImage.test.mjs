@@ -68,3 +68,16 @@ test("CJK overflow does not rewind to an earlier space before Latin", () => {
     "三四",
   ]);
 });
+
+test("tabs expand to eight-space stops", () => {
+  assert.deepEqual(wrapText("\thello", 200, measure), ["        hello"]);
+  assert.deepEqual(wrapText("a\tb", 200, measure), ["a       b"]);
+});
+
+test("CR and CRLF count as line breaks", () => {
+  assert.deepEqual(wrapText("one\r\ntwo\rthree", 200, measure), [
+    "one",
+    "two",
+    "three",
+  ]);
+});

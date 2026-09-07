@@ -156,19 +156,33 @@ function wrapLine(
   return out;
 }
 
+const TAB_SIZE = 8;
+
+function expandTabs(line: string): string {
+  let out = "";
+  for (const ch of line) {
+    out += ch === "\t" ? " ".repeat(TAB_SIZE - (out.length % TAB_SIZE)) : ch;
+  }
+  return out;
+}
+
 // Split the document into rendered lines. Blank physical lines become blank
 // rows (paragraph breaks), all-whitespace lines collapse to blank.
+// Tabs expand first so pasted text (terminal indents, Windows line endings)
+// can't leak raw control characters into fillText. Tab stops count
+// characters, not columns — the card has no fixed grid to be exact against.
 export function wrapText(
   text: string,
   maxWidth: number,
   measure: (s: string) => number,
 ): string[] {
   const out: string[] = [];
-  for (const raw of text.split("\n")) {
-    if (raw.trim() === "") {
+  for (const raw of text.replace(/\r\n?/g, "\n").split("\n")) {
+    const line = expandTabs(raw);
+    if (line.trim() === "") {
       out.push("");
     } else {
-      out.push(...wrapLine(raw, maxWidth, measure));
+      out.push(...wrapLine(line, maxWidth, measure));
     }
   }
   return out;
