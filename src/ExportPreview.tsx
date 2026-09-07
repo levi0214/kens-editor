@@ -3,19 +3,13 @@ import { KeyHints } from "./keyHint";
 
 interface ExportPreviewProps {
   url: string;
-  width: number;
-  height: number;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export function ExportPreview({
-  url,
-  width,
-  height,
-  onConfirm,
-  onCancel,
-}: ExportPreviewProps) {
+// A single full rectangle, scaled to fit (no scrolling), with the action
+// buttons below it. No title, no size readout — just the image and Export.
+export function ExportPreview({ url, onConfirm, onCancel }: ExportPreviewProps) {
   const confirmRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -49,20 +43,8 @@ export function ExportPreview({
         role="dialog"
         aria-label="Export as image"
       >
-        <div className="export-preview-head">
-          <span className="export-preview-title">导出为图片</span>
-          <span className="export-preview-dims" aria-live="polite">
-            {width} × {height}
-          </span>
-        </div>
-        <div className="export-preview-scroll">
-          <img
-            className="export-preview-img"
-            src={url}
-            width={width}
-            height={height}
-            alt="导出预览"
-          />
+        <div className="export-preview-stage">
+          <img className="export-preview-img" src={url} alt="导出预览" />
         </div>
         <div className="export-preview-actions">
           <button

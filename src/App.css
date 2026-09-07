@@ -2116,8 +2116,8 @@ body,
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  background: rgb(0 0 0 / 18%);
+  padding: 32px;
+  background: rgb(0 0 0 / 26%);
   -webkit-app-region: no-drag;
   app-region: no-drag;
 }
@@ -2126,82 +2126,61 @@ body,
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  width: min(500px, 96vw);
-  max-height: min(78vh, 720px);
-  overflow: hidden;
-  border-radius: 12px;
-  font: 13px/1.5 var(--app-font);
-  color: var(--editor-fg);
-  background: var(--editor-bg);
-  box-shadow: 0 16px 48px rgb(0 0 0 / 18%);
+  align-items: center;
+  gap: 16px;
+  max-width: 100%;
 }
 
-.export-preview-head {
+/* The whole card is shown, centered, and scales down to fit without
+   scrolling. A tall card shrinks; a short one shows at 1:1. */
+.export-preview-stage {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-shrink: 0;
-  padding: 14px 18px 10px;
-}
-
-.export-preview-title {
-  font: 600 14px/1.3 var(--app-font);
-}
-
-.export-preview-dims {
-  font: 12px/1 var(--app-font);
-  color: var(--statusbar-fg);
-}
-
-.export-preview-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  border-top: 1px solid rgb(127 127 127 / 13%);
-  border-bottom: 1px solid rgb(127 127 127 / 13%);
+  justify-content: center;
+  max-width: 100%;
 }
 
 .export-preview-img {
   display: block;
   width: auto;
-  max-width: 100%;
   height: auto;
+  max-width: min(92vw, 1200px);
+  max-height: calc(100vh - 128px);
+  border-radius: 6px;
+  box-shadow: 0 12px 48px rgb(0 0 0 / 30%);
 }
 
 .export-preview-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+  justify-content: center;
+  gap: 10px;
   flex-shrink: 0;
-  padding: 12px 16px;
 }
 
 .export-preview-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 14px;
+  padding: 8px 16px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font: 500 13px/1.4 system-ui, -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
   cursor: pointer;
 }
 
 .export-preview-btn-cancel {
-  color: inherit;
-  background: rgb(127 127 127 / 14%);
+  color: #fff;
+  background: rgb(255 255 255 / 0.14);
 }
 
 .export-preview-btn-cancel:hover {
-  background: rgb(127 127 127 / 22%);
+  background: rgb(255 255 255 / 0.22);
 }
 
 .export-preview-btn-confirm {
-  color: var(--editor-fg);
-  background: rgb(127 127 127 / 22%);
+  color: var(--editor-bg);
+  background: var(--editor-fg);
 }
 
 .export-preview-btn-confirm:hover {
-  background: rgb(127 127 127 / 30%);
+  background: rgb(40 40 38);
 }

@@ -1699,8 +1699,6 @@ function App() {
       {exportPreview && (
         <ExportPreview
           url={exportPreview.url}
-          width={exportPreview.width}
-          height={exportPreview.height}
           onConfirm={() => {
             void confirmExport();
           }}
