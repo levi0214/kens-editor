@@ -15,6 +15,12 @@ const PAD_Y = 32;
 const BG = "#faf9f6";
 const FG = "#1c1b19";
 
+// Canvas ceiling in device pixels, measured on this machine's WKWebView: a
+// 720px-wide canvas still paints fully at 262144 px tall. Cap at half that
+// for margin on older WebKit. At 2x on a 360px card that is ~2270 rows; the
+// longest real note needs ~1200 rows (~69k px at 2x).
+const MAX_CANVAS_SIDE = 131072; // device px
+
 export interface RenderedImage {
   // Object URL for preview. The caller revokes it when done.
   url: string;
@@ -37,9 +43,13 @@ export async function renderTextToPng(text: string): Promise<RenderedImage> {
   const lines = wrapText(text, CONTENT_WIDTH, (s) => ctx.measureText(s).width);
   const width = CONTENT_WIDTH + PAD_X * 2;
   const height = PAD_Y * 2 + lines.length * lineHeight;
+  const canvasHeight = Math.ceil(height * SCALE);
+  if (canvasHeight > MAX_CANVAS_SIDE) {
+    throw new Error("Too long to export as one image");
+  }
 
   canvas.width = Math.ceil(width * SCALE);
-  canvas.height = Math.ceil(height * SCALE);
+  canvas.height = canvasHeight;
 
   // Draw in CSS pixels, not device pixels.
   ctx.scale(SCALE, SCALE);
