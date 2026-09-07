@@ -47,3 +47,24 @@ test("a word longer than the width overflows into fragments", () => {
   const lines = wrapText("abcdefghij", 30, measure);
   assert.deepEqual(lines, ["abc", "def", "ghi", "j"]);
 });
+
+test("keeps trailing punctuation on the previous line", () => {
+  const lines = wrapText("一二三四五。", 50, measure);
+  assert.deepEqual(lines, ["一二三四五。"]);
+});
+
+test("moves opening punctuation onto the next line", () => {
+  const lines = wrapText("他说「你好啊", 30, measure);
+  assert.deepEqual(lines, ["他说", "「你好", "啊"]);
+});
+
+test("CJK overflow does not rewind to an earlier space before Latin", () => {
+  const lines = wrapText("一二三四五六七八实际很 low的感觉一二三四", 50, measure);
+  assert.deepEqual(lines, [
+    "一二三四五",
+    "六七八实际",
+    "很 low",
+    "的感觉一二",
+    "三四",
+  ]);
+});

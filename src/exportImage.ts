@@ -1,20 +1,21 @@
 // Render the editor's plain text into a single tall PNG card, like a
 // photograph of a page. No markdown, no parsing — the text is drawn as-is.
 //
-// The default is a narrow portrait card that reads well on a phone: a stable
-// content column (~400px) with a slightly larger baseline font.
+// The card is a phone column, not a desktop page. Shared full-width on a
+// phone, 18px type at 360px wide reads as 18px. Wider cards shrink the type.
 
-const FONT = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+const FONT =
+  'ui-monospace, SFMono-Regular, Menlo, "PingFang SC", "Hiragino Sans GB", Monaco, Consolas, monospace';
 const DEFAULT_FONT_SIZE = 18;
-const DEFAULT_CONTENT_WIDTH = 400;
+const DEFAULT_CONTENT_WIDTH = 320;
 const LINE_HEIGHT = 1.6;
-const PAD_X = 40;
-const PAD_Y = 64;
+const PAD_X = 20;
+const PAD_Y = 32;
 const BG = "#faf9f6";
 const FG = "#1c1b19";
 
 export interface ExportImageOptions {
-  // Content text column width in CSS pixels. Default 400 (narrow, mobile).
+  // Content text column width in CSS pixels. Default 320 (~18 CJK at 18px).
   contentWidth?: number;
   // Font size in CSS pixels. Default 18.
   fontSize?: number;
@@ -93,9 +94,30 @@ function font(px: number): string {
   return `${px}px ${FONT}`;
 }
 
-// Wrap a single physical line to `maxWidth`. Breaks at the last space when one
-// is available (Latin prose), otherwise breaks anywhere (CJK). This mirrors the
-// editor's `pre-wrap` + `overflow-wrap: break-word`.
+// Trailing punctuation stays on the previous line; opening punctuation
+// follows the next. Cheap kinsoku so a card doesn't start a line with 。.
+const NO_START = "，。、；：！？,.;:!?)…—）】》」』”’]}";
+const NO_END = "「『【（《“‘([{";
+
+function stickPunctuation(left: string, right: string): [string, string] {
+  const head = Array.from(left);
+  const tail = Array.from(right);
+  while (tail.length > 0 && head.length > 0 && NO_START.includes(tail[0])) {
+    head.push(tail.shift() as string);
+  }
+  while (head.length > 1 && NO_END.includes(head[head.length - 1])) {
+    tail.unshift(head.pop() as string);
+  }
+  return [head.join(""), tail.join("")];
+}
+
+function isLatinWordChar(ch: string): boolean {
+  return /[A-Za-z0-9]/.test(ch);
+}
+
+// Wrap a single physical line to `maxWidth`. Latin overflow breaks at the last
+// space so words stay whole. CJK overflow breaks here — it must not rewind to
+// a space sitting earlier on the line, or "际很 low" becomes a stranded 际很.
 function wrapLine(
   raw: string,
   maxWidth: number,
@@ -118,14 +140,23 @@ function wrapLine(
       line += ch;
       continue;
     }
-    const space = line.lastIndexOf(" ");
-    if (space > 0) {
-      out.push(line.slice(0, space).trimEnd());
-      line = line.slice(space + 1) + ch;
-    } else {
-      out.push(line.trimEnd());
-      line = ch;
+    if (NO_START.includes(ch)) {
+      line += ch;
+      continue;
     }
+    const space = isLatinWordChar(ch) ? line.lastIndexOf(" ") : -1;
+    let left: string;
+    let right: string;
+    if (space > 0) {
+      left = line.slice(0, space).trimEnd();
+      right = line.slice(space + 1) + ch;
+    } else {
+      left = line.trimEnd();
+      right = ch;
+    }
+    [left, right] = stickPunctuation(left, right);
+    out.push(left);
+    line = right;
   }
 
   if (line.trimEnd() !== "") {
