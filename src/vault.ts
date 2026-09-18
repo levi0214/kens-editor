@@ -8,11 +8,19 @@ export interface VaultDocument {
   pinned: boolean;
 }
 
-// Last list length, for picker placeholders. Contents are loaded on each open.
+// Count only. Contents are loaded when the picker opens.
 let documentCount: number | null = null;
 
 export function getVaultDocumentCount(): number | null {
   return documentCount;
+}
+
+export async function refreshVaultDocumentCount(): Promise<void> {
+  try {
+    documentCount = await invoke<number>("count_vault_documents");
+  } catch {
+    // Keep the last known size.
+  }
 }
 
 export async function listVaultDocuments(): Promise<VaultDocument[]> {
@@ -42,11 +50,14 @@ export async function peekMostRecentVaultDocument(): Promise<string | null> {
 }
 
 export async function createVaultDocument(): Promise<string> {
-  return invoke<string>("create_vault_document");
+  const path = await invoke<string>("create_vault_document");
+  if (documentCount !== null) documentCount += 1;
+  return path;
 }
 
 export async function deleteVaultDocument(path: string): Promise<void> {
   await invoke("delete_vault_document", { path });
+  if (documentCount !== null) documentCount = Math.max(0, documentCount - 1);
 }
 
 export async function toggleVaultDocumentPin(path: string): Promise<boolean> {
