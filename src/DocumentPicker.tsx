@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { adjacentDocumentPath, pickerMoveStep } from "./documentNav";
 import { KeyHints } from "./keyHint";
 import { previewFromText } from "./preview";
@@ -14,6 +14,7 @@ import { shortDate } from "./shortDate";
 import {
   deleteVaultDocument,
   listVaultDocuments,
+  getVaultDocumentCount,
   revealVaultInFinder,
   searchVaultDocuments,
   toggleVaultDocumentPin,
@@ -46,8 +47,10 @@ export function DocumentPicker({
   onDelete,
   onSwitch,
 }: DocumentPickerProps) {
+  const [initialCount] = useState(getVaultDocumentCount);
   const [documents, setDocuments] = useState<VaultDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [query, setQuery] = useState("");
   const [resultsQuery, setResultsQuery] = useState("");
   const [searchPath, setSearchPath] = useState<string | null>(null);
@@ -58,6 +61,7 @@ export function DocumentPicker({
   const selectedItemRef = useRef<HTMLDivElement | null>(null);
   const confirmDeleteRef = useRef<HTMLButtonElement>(null);
   const searchActive = query.length > 0;
+  const waitingForCount = loading && initialCount === null;
   const searchReady = !searchActive || resultsQuery === query;
   const searchSelection =
     searchReady && searchPath && documents.some((document) => document.path === searchPath)
@@ -81,6 +85,7 @@ export function DocumentPicker({
             if (active) {
               setDocuments(items);
               setResultsQuery(requestQuery);
+              setLoadError(false);
               setLoading(false);
             }
           })
@@ -88,6 +93,7 @@ export function DocumentPicker({
             if (active) {
               setDocuments([]);
               setResultsQuery(requestQuery);
+              setLoadError(true);
               setLoading(false);
             }
           });
@@ -241,7 +247,7 @@ export function DocumentPicker({
     searchReady,
   ]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (loading || documents.length === 0) {
       return;
     }
@@ -249,7 +255,7 @@ export function DocumentPicker({
     selectedItemRef.current?.scrollIntoView({ block: "nearest" });
   }, [highlightPath, documents, loading]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     searchInputRef.current?.focus();
   }, []);
 
@@ -272,7 +278,7 @@ export function DocumentPicker({
   return (
     <div className="picker-backdrop" onMouseDown={onClose}>
       <div
-        className={`picker-panel${searchActive ? " picker-panel-searching" : ""}`}
+        className={`picker-panel${searchActive ? " picker-panel-searching" : ""}${waitingForCount ? " picker-panel-pending" : ""}`}
         role="dialog"
         aria-label="Documents"
         onMouseDown={(event) => event.stopPropagation()}
@@ -308,12 +314,14 @@ export function DocumentPicker({
             <span className="picker-finder-label">Finder</span>
           </button>
         </div>
-        <div className="picker-list" ref={listRef} tabIndex={-1}>
+        <div className="picker-list" ref={listRef} tabIndex={-1} aria-busy={loading}>
           {loading ? (
-            <div className="picker-empty">Loading…</div>
+            initialCount ? Array.from({ length: initialCount }, (_, index) => (
+              <div key={index} className="picker-item picker-placeholder" aria-hidden="true" />
+            )) : <div className="picker-empty">Loading…</div>
           ) : documents.length === 0 ? (
             <div className="picker-empty">
-              {searchActive ? "No documents found" : "No documents yet"}
+              {loadError ? "Could not load documents" : searchActive ? "No documents found" : "No documents yet"}
             </div>
           ) : (
             documents.map((document) => {

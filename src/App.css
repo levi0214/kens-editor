@@ -960,8 +960,15 @@ body,
   overflow: hidden;
 }
 
+/* Keep the search input mounted and focused while its initial size is unknown. */
+.picker-panel-pending {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .picker-header {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -1065,6 +1072,10 @@ body,
   border-radius: 2px;
   background: var(--editor-bg);
   overflow: hidden;
+}
+
+.picker-placeholder {
+  visibility: hidden;
 }
 
 .picker-item:hover {

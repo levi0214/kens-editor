@@ -8,8 +8,34 @@ export interface VaultDocument {
   pinned: boolean;
 }
 
+// Only the count survives closing the picker. Contents are loaded on each open.
+let documentCount: number | null = null;
+let countRevision = 0;
+
+export function getVaultDocumentCount(): number | null {
+  return documentCount;
+}
+
+export async function refreshVaultDocumentCount(): Promise<void> {
+  const revision = ++countRevision;
+  // Until the refresh finishes, new pickers must not size themselves from stale data.
+  documentCount = null;
+  try {
+    const count = await invoke<number>("count_vault_documents");
+    if (revision === countRevision) documentCount = count;
+  } catch {
+    if (revision === countRevision) documentCount = null;
+  }
+}
+
 export async function listVaultDocuments(): Promise<VaultDocument[]> {
-  return invoke<VaultDocument[]>("list_vault_documents");
+  const revision = countRevision;
+  const documents = await invoke<VaultDocument[]>("list_vault_documents");
+  if (revision === countRevision) {
+    countRevision += 1;
+    documentCount = documents.length;
+  }
+  return documents;
 }
 
 export async function searchVaultDocuments(
@@ -33,11 +59,14 @@ export async function peekMostRecentVaultDocument(): Promise<string | null> {
 }
 
 export async function createVaultDocument(): Promise<string> {
-  return invoke<string>("create_vault_document");
+  const path = await invoke<string>("create_vault_document");
+  await refreshVaultDocumentCount();
+  return path;
 }
 
 export async function deleteVaultDocument(path: string): Promise<void> {
   await invoke("delete_vault_document", { path });
+  await refreshVaultDocumentCount();
 }
 
 export async function toggleVaultDocumentPin(path: string): Promise<boolean> {
