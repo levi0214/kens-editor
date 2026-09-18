@@ -522,23 +522,6 @@ fn delete_document_version_in_dir(
 }
 
 #[tauri::command]
-fn count_vault_documents() -> Result<usize, String> {
-    let dir = ensure_vault_exists()?;
-    count_vault_documents_in_dir(&dir)
-}
-
-fn count_vault_documents_in_dir(dir: &Path) -> Result<usize, String> {
-    let mut count = 0;
-    for entry in fs::read_dir(dir).map_err(|error| error.to_string())? {
-        let entry = entry.map_err(|error| error.to_string())?;
-        if is_vault_text_file(&entry.path()) {
-            count += 1;
-        }
-    }
-    Ok(count)
-}
-
-#[tauri::command]
 fn list_vault_documents() -> Result<Vec<VaultDocument>, String> {
     let dir = ensure_vault_exists()?;
     read_vault_documents(&dir)
@@ -827,7 +810,6 @@ pub fn run() {
             save_document_version,
             read_document_version,
             delete_document_version,
-            count_vault_documents,
             list_vault_documents,
             search_vault_documents,
             most_recent_vault_document,
@@ -880,23 +862,6 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
         }
-    }
-
-    #[test]
-    fn counts_only_vault_text_files_without_reading_contents() {
-        use std::os::unix::fs::PermissionsExt;
-
-        let dir = TestDir::new("count-documents");
-        assert_eq!(count_vault_documents_in_dir(dir.path()).unwrap(), 0);
-        let unreadable = dir.path().join("one.txt");
-        fs::write(&unreadable, "contents need not be readable").unwrap();
-        fs::set_permissions(&unreadable, fs::Permissions::from_mode(0o000)).unwrap();
-        fs::write(dir.path().join("two.txt"), "").unwrap();
-        fs::write(dir.path().join("ignored.md"), "").unwrap();
-        fs::create_dir(dir.path().join("directory.txt")).unwrap();
-        fs::write(dir.path().join("directory.txt/nested.txt"), "").unwrap();
-
-        assert_eq!(count_vault_documents_in_dir(dir.path()).unwrap(), 2);
     }
 
     #[test]

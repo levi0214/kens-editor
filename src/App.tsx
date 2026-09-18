@@ -65,7 +65,7 @@ import { useFlushOnClose } from "./useFlushOnClose";
 import { useChromeIdle } from "./useChromeIdle";
 import { useDocumentSwitch } from "./useDocumentSwitch";
 import { useWindowFullscreen } from "./useWindowFullscreen";
-import { mostRecentVaultDocument, refreshVaultDocumentCount } from "./vault";
+import { mostRecentVaultDocument } from "./vault";
 import {
   createPristineDraft,
   discardPristineDraft,
@@ -728,7 +728,6 @@ function App() {
   const saveToPath = useCallback(
     async (targetPath: string) => {
       await invoke("write_text_file", { path: targetPath, contents: text });
-      void refreshVaultDocumentCount();
       setPath(targetPath);
       markLoaded(targetPath, text);
     },

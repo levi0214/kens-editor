@@ -960,12 +960,6 @@ body,
   overflow: hidden;
 }
 
-/* Keep the search input mounted and focused while its initial size is unknown. */
-.picker-panel-pending {
-  opacity: 0;
-  pointer-events: none;
-}
-
 .picker-header {
   display: flex;
   flex-shrink: 0;

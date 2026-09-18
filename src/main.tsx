@@ -5,7 +5,6 @@ import { initFontSize } from "./fontSize";
 import { initMaxWidth } from "./maxWidth";
 import { initTheme } from "./theme";
 import { initWrap } from "./wrap";
-import { refreshVaultDocumentCount } from "./vault";
 
 initFontSize();
 initMaxWidth();
@@ -18,7 +17,3 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
 );
 
 void initTheme();
-void refreshVaultDocumentCount();
-window.addEventListener("focus", () => {
-  void refreshVaultDocumentCount();
-});

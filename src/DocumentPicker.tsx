@@ -61,7 +61,6 @@ export function DocumentPicker({
   const selectedItemRef = useRef<HTMLDivElement | null>(null);
   const confirmDeleteRef = useRef<HTMLButtonElement>(null);
   const searchActive = query.length > 0;
-  const waitingForCount = loading && initialCount === null;
   const searchReady = !searchActive || resultsQuery === query;
   const searchSelection =
     searchReady && searchPath && documents.some((document) => document.path === searchPath)
@@ -278,7 +277,7 @@ export function DocumentPicker({
   return (
     <div className="picker-backdrop" onMouseDown={onClose}>
       <div
-        className={`picker-panel${searchActive ? " picker-panel-searching" : ""}${waitingForCount ? " picker-panel-pending" : ""}`}
+        className={`picker-panel${searchActive ? " picker-panel-searching" : ""}`}
         role="dialog"
         aria-label="Documents"
         onMouseDown={(event) => event.stopPropagation()}
@@ -316,9 +315,13 @@ export function DocumentPicker({
         </div>
         <div className="picker-list" ref={listRef} tabIndex={-1} aria-busy={loading}>
           {loading ? (
-            initialCount ? Array.from({ length: initialCount }, (_, index) => (
-              <div key={index} className="picker-item picker-placeholder" aria-hidden="true" />
-            )) : <div className="picker-empty">Loading…</div>
+            initialCount ? (
+              Array.from({ length: initialCount }, (_, index) => (
+                <div key={index} className="picker-item picker-placeholder" aria-hidden="true" />
+              ))
+            ) : (
+              <div className="picker-empty">Loading…</div>
+            )
           ) : documents.length === 0 ? (
             <div className="picker-empty">
               {loadError ? "Could not load documents" : searchActive ? "No documents found" : "No documents yet"}
