@@ -8,6 +8,7 @@ export function useChromeIdle(
 ): { visible: boolean; bump: () => void } {
   const [visible, setVisible] = useState(true);
   const timerRef = useRef<number | undefined>(undefined);
+  const mousePositionRef = useRef<{ x: number; y: number } | undefined>(undefined);
 
   const bump = useCallback(() => {
     setVisible(true);
@@ -35,7 +36,16 @@ export function useChromeIdle(
       return;
     }
 
-    const onMouseMove = () => bump();
+    const onMouseMove = (event: MouseEvent) => {
+      const previous = mousePositionRef.current;
+      mousePositionRef.current = { x: event.screenX, y: event.screenY };
+
+      // Scrolling can emit mousemove without moving the pointer.
+      const moved = previous
+        ? previous.x !== event.screenX || previous.y !== event.screenY
+        : event.movementX !== 0 || event.movementY !== 0;
+      if (moved) bump();
+    };
 
     window.addEventListener("mousemove", onMouseMove);
     bump();
